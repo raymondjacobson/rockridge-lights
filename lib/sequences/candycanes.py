@@ -12,8 +12,10 @@ pixels = neopixel.NeoPixel(
     pixel_order=ORDER
 )
 
+CANDYCANE_SIZE = 10
+
+counter = 0
 while True:
-    pixels.fill((255, 0, 0))
-    time.sleep(1)
-    pixels.fill((0, 255, 0))
+    for i in range(0, len(pixels)):
+        pixels[i] = (255, 0, 0)
     time.sleep(1)

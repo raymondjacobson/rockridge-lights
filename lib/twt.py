@@ -3,13 +3,13 @@ import re
 import requests
 import tldextract
 import validators
-from constants import Sequence
+from lib.constants import Sequence
 
 user_handle = '@RockridgeLights'
 user_id = '1467030371694886912'
 
 def auth():
-    return os.getenv('TOKEN')
+    return os.getenv('TWITTER_TOKEN')
 
 def create_headers(bearer_token):
     headers = {'Authorization': 'Bearer {}'.format(bearer_token)}
@@ -45,6 +45,9 @@ def get_tweet(headers, tweet_id):
     return tweet['data']['text']
 
 def parse_tweet(text):
+    print("\n----------------------------\n")
+    print(text)
+    print("\n----------------------------\n")
     parsed_text = text.split("{} play ".format(user_handle), 1)
     if len(parsed_text) == 2:
         item = parsed_text[1]
@@ -61,14 +64,19 @@ def parse_tweet(text):
             return (Sequence.XMAS, None)
         else:
             # rip bad tweet
-            return
+            raise Exception('Could not find sequence')
+    raise Exception('Could not parse tweet')
 
 def poll_for_tweets(last_tweet_id):
     headers = create_headers(auth())
     tweet_id = get_mentions(headers, last_tweet_id)
     if tweet_id != '':
-        # we got somethin'
+        print(f"Got new tweet {tweet_id}")
         tweet = get_tweet(headers, tweet_id)
-        (sequence, youtube_url) = parse_tweet(tweet)
-        return (sequence, youtube_url, tweet_id)
-    return 'nothing to see here'
+        try:
+            (sequence, youtube_url) = parse_tweet(tweet)
+            return (sequence, youtube_url, tweet_id)
+        except Exception as e:
+            print(e)
+            return (False, None, tweet_id)
+    return (False, None, last_tweet_id)

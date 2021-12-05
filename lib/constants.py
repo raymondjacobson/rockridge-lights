@@ -5,3 +5,4 @@ class Sequence(Enum):
     CANDYCANES = 2
     STARRYNIGHT = 3
     XMAS = 4
+    OFF = 5

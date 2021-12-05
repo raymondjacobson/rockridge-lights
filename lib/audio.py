@@ -16,7 +16,7 @@ FPS = 60
 AUDIO = None
 STREAM = None
 
-def get_wav_from_youtube(youtube_url, on_progress):
+def get_wav_from_youtube(youtube_url):
     """
     Gets the .wav file for the audio of a youtube video
     """
