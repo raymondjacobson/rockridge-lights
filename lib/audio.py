@@ -8,6 +8,7 @@ import youtube_dl
 import board
 import neopixel
 import time
+from lib import led
 
 # script_dir = os.path.dirname(__file__)
 
@@ -43,11 +44,13 @@ def get_wav_from_youtube(youtube_url):
             # Replace file name with the out templated extension
             # so that the youtube webm may be downloaded first
             # and then replaced as wav
-            'outtmpl': outfile.replace('wav', '%(ext)s')
+            'outtmpl': outfile.replace('wav', '%(ext)s'),
+            'progress_hooks': [on_progress]
         }
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
             ydl.download([youtube_url])
 
+    print(f"Had existing file {outfile}")
     wf = wave.open(outfile, 'rb')
     return wf
 
@@ -78,11 +81,10 @@ def terminate():
         AUDIO.terminate()
 
 def on_progress(entries):
-	downloaded_bytes = entries.downloaded_bytes
-	total_bytes = entries.total_bytes
-	percent_complete = downloaded_bytes * 1. / total_bytes * 1.
-	print(percent_complete)
-
+    downloaded_bytes = entries['downloaded_bytes']
+    total_bytes = entries['total_bytes']
+    percent_complete = downloaded_bytes * 1. / total_bytes * 1.
+    led.loading(percent_complete)
 
 
 

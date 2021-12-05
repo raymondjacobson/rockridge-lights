@@ -33,8 +33,12 @@ def main():
     print(sys.argv)
     if len(sys.argv) > 1:
         manual_sequence = sys.argv[1]
-        PROCESS = run_sequence(manual_sequence)
-        SEQUENCE = 'manual'
+        if 'youtube' in manual_sequence:
+            wav_file = audio.get_wav_from_youtube(manual_sequence)
+            audio.play(wav_file, led.update)
+        else:
+            PROCESS = run_sequence(manual_sequence)
+            SEQUENCE = 'manual'
 
     LAST_TWEET_ID = get_last_tweet_id()
     counter = 0
