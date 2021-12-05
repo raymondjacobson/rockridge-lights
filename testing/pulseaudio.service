@@ -1,0 +1,14 @@
+[Unit]
+Description=PulseAudio system server
+
+[Service]
+Type=notify
+ExecStart=pulseaudio --daemonize=no --system --realtime --log-target=journal
+
+[Install]
+WantedBy=multi-user.target
+Enable service
+
+sudo systemctl --system enable pulseaudio.service
+sudo systemctl --system start pulseaudio.service
+sudo systemctl --system status pulseaudio.service
