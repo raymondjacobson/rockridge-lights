@@ -48,7 +48,7 @@ def parse_tweet(text):
     print("\n----------------------------\n")
     print(text)
     print("\n----------------------------\n")
-    parsed_text = text.split("{} play ".format(user_handle), 1)
+    parsed_text = text.split("{} ".format(user_handle), 1)
     if len(parsed_text) == 2:
         item = parsed_text[1]
         if validators.url(item):
@@ -62,6 +62,8 @@ def parse_tweet(text):
             return (Sequence.STARRYNIGHT, None)
         elif item == 'xmas':
             return (Sequence.XMAS, None)
+        elif item == 'xmas2':
+            return (Sequence.XMAS2, None)
         else:
             # rip bad tweet
             raise Exception('Could not find sequence')

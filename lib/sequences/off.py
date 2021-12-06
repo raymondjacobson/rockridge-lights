@@ -1,10 +1,7 @@
 import time
 import board
 import neopixel
-
-PIXEL_PIN = board.D18
-NUM_PIXELS = 50
-ORDER = neopixel.GRB
+from lib.config import NUM_PIXELS, PIXEL_PIN, ORDER
 
 pixels = neopixel.NeoPixel(
     PIXEL_PIN,

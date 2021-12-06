@@ -2,44 +2,27 @@ import time
 import board
 import neopixel
 import numpy as np
-
-PIXEL_PIN = board.D18
-NUM_PIXELS = 50
-ORDER = neopixel.GRB
+from lib.config import NUM_PIXELS, PIXEL_PIN, ORDER
 
 pixels = neopixel.NeoPixel(
     PIXEL_PIN,
     NUM_PIXELS,
-    pixel_order=ORDER
+    pixel_order=ORDER,
+    auto_write=False,
+    brightness=0.2
 )
 
 RED = [0, 255, 0]
 WHITE = [255, 255, 255]
 
-last_data = np.empty([NUM_PIXELS, 3], dtype=int)
 def write(data):
     global last_data
-    for i in range(0, len(pixels)):
-        if not np.array_equal(last_data[i], data[i]):
-            pixels[i] = data[i]
-    last_data = data
+    for i in range(0, len(data)):
+        pixels[i] = data[i]
+    pixels.show()
 
 CANDYCANE_SIZE = 10
 NUM_CANES = int(NUM_PIXELS / CANDYCANE_SIZE)
-
-# cane_position = 0
-# while True:
-#     data = np.empty([NUM_PIXELS, 3], dtype=int)
-#     for i in range(0, NUM_CANES):
-#         for j in range(i * CANDYCANE_SIZE, i * CANDYCANE_SIZE + CANDYCANE_SIZE):
-#             if i % 2 == 0:
-#                 data[j] = RED
-#             else:
-#                 data[j] = WHITE
-#     data = np.roll(data, cane_position, axis=0)
-#     write(data)
-#     cane_position += 1
-#     time.sleep(0.01)
 
 data = np.empty([NUM_PIXELS, 3], dtype=int)
 for i in range(0, NUM_CANES):
@@ -49,22 +32,32 @@ for i in range(0, NUM_CANES):
         else:
             data[j] = WHITE
 write(data)
-
-def flip(current, percent):
-    val = int(percent * 255)
-    return [val, 255, val]
-    
+time.sleep(2)
 
 cane_position = 0
 counter = 0
 current_fade_percent = 0
+crossfade_steps = 50
+rotated = False
 while True:
-    if counter % 100 == 0:
-        cane_position += 1
     for i in range(0, NUM_CANES):
-        light = (i * CANDYCANE_SIZE + cane_position) % NUM_PIXELS
-        data[light] = flip(last_data, current_fade_percent)
-    current_fade_percent = (current_fade_percent + 1) % 100
-    print(current_fade_percent)
+        light = i * CANDYCANE_SIZE + cane_position
+        val = int(current_fade_percent / crossfade_steps * 255)
+        if i % 2 == 0:
+            data[light] = [val, 255, val] if not rotated else [255 - val, 255, 255 - val]
+        else:
+            data[light] = [255 - val, 255, 255 - val] if not rotated else [val, 255, val]
+
+    if (counter + 1) % crossfade_steps == 0:
+        if i % 2 == 0:
+            data[light] = [255, 255, 255] if not rotated else [0, 255, 0]
+        else:
+            data[light] = [0, 255, 0] if not rotated else [255, 255, 255]
+        cane_position = (cane_position + 1) % CANDYCANE_SIZE
+        if cane_position % CANDYCANE_SIZE == 0:
+            rotated = not rotated
+
+    current_fade_percent = (current_fade_percent + 1) % crossfade_steps
+    counter = counter + 1
     write(data)
-    time.sleep(0.1)
+    time.sleep(.0001)

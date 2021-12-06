@@ -1,8 +1,7 @@
 import numpy as np
 import board
 import neopixel
-
-NUM_PIXELS = 50
+from lib.config import NUM_PIXELS, PIXEL_PIN, ORDER
 
 pixels = neopixel.NeoPixel(board.D18, NUM_PIXELS, pixel_order=neopixel.GRB)
 

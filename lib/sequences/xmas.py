@@ -1,10 +1,7 @@
 import time
 import board
 import neopixel
-
-PIXEL_PIN = board.D18
-NUM_PIXELS = 50
-ORDER = neopixel.GRB
+from lib.config import NUM_PIXELS, PIXEL_PIN, ORDER
 
 pixels = neopixel.NeoPixel(
     PIXEL_PIN,
@@ -14,6 +11,12 @@ pixels = neopixel.NeoPixel(
 
 while True:
     pixels.fill((255, 0, 0))
-    time.sleep(1)
-    pixels.fill((0, 255, 0))
-    time.sleep(1)
+    for i in range(0, 255):
+        time.sleep(.01)
+        pixels.fill((255 - i, i, 0))
+    time.sleep(30)
+    for i in range(0, 255):
+        time.sleep(.01)
+        pixels.fill((i, 255 - i, 0))
+    time.sleep(30)
+

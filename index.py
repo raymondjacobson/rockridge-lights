@@ -1,4 +1,5 @@
 import atexit
+import os
 import subprocess
 import sys
 import time
@@ -27,9 +28,14 @@ def get_last_tweet_id():
 
 def run_sequence(file):
     print(f"Running sequence at {file}")
-    return subprocess.Popen([sys.executable, file])
+    return subprocess.Popen(
+        [sys.executable, file],
+        cwd=os.path.dirname(os.path.realpath(__file__)),
+        env={'PYTHONPATH': os.pathsep.join(sys.path)}
+    )
 
 def main():
+    global SEQUENCE, LAST_TWEET_ID, STREAM, PROCESS
     print(sys.argv)
     if len(sys.argv) > 1:
         manual_sequence = sys.argv[1]
@@ -44,21 +50,20 @@ def main():
     counter = 0
     while True:
         if counter % POLL_SEC == 0:
-            print(f"Checking for new tweets, last id is {LAST_TWEET_ID}")
             if POLL_TWITTER:
+                print(f"Checking for new tweets, last id is {LAST_TWEET_ID}")
                 (
                     new_sequence,
                     youtube_url,
                     last_tweet_id
                 ) = twt.poll_for_tweets(LAST_TWEET_ID)
+                LAST_TWEET_ID = last_tweet_id
+                persist_last_tweet_id(LAST_TWEET_ID)
+                print(f"Got tweets, id is {LAST_TWEET_ID}")
             else:
                 new_sequence = False
                 youtube_url = None
                 last_tweet_id = LAST_TWEET_ID
-
-            LAST_TWEET_ID = last_tweet_id
-            persist_last_tweet_id(LAST_TWEET_ID)
-            print(f"Got tweets, id is {LAST_TWEET_ID}")
 
             try:
                 if new_sequence:
@@ -83,6 +88,8 @@ def main():
                         PROCESS = run_sequence('./lib/sequences/starrynight.py')
                     elif new_sequence == Sequence.XMAS:
                         PROCESS = run_sequence('./lib/sequences/xmas.py')
+                    elif new_sequence == Sequence.XMA2S:
+                        PROCESS = run_sequence('./lib/sequences/xmas2.py')
                     elif new_sequence == Sequence.OFF:
                         PROCESS = run_sequence('./lib/sequences/off.py')
                     else:
