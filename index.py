@@ -98,7 +98,7 @@ def main():
                     # Default sequence to play if none
                     if not SEQUENCE:
                         SEQUENCE = Sequence.CANDYCANES
-                        PROCESS = run_sequence('./lib/sequences/candycanes.py')
+                        # PROCESS = run_sequence('./lib/sequences/candycanes.py')
 
             except Exception as e:
                 print(e)

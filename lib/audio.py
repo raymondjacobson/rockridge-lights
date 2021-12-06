@@ -9,8 +9,7 @@ import board
 import neopixel
 import time
 from lib import led
-
-# script_dir = os.path.dirname(__file__)
+from lib import config
 
 SONG_DIR = './songs'
 FPS = 60
@@ -67,10 +66,9 @@ def play(file, callback):
         channels=file.getnchannels(),
         rate=file.getframerate(),
         output=True,
-        frames_per_buffer=int(44100 / FPS),
+        frames_per_buffer=int(config.MIC_RATE / config.FPS),
         stream_callback = reader
     )
-
     return stream
 
 def terminate():
