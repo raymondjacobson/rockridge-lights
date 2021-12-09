@@ -6,10 +6,6 @@ from scipy.ndimage.filters import gaussian_filter1d
 samples_per_frame = int(config.MIC_RATE / config.FPS)
 y_roll = np.random.rand(config.N_ROLLING_HISTORY, samples_per_frame) / 1e16
 
-fft_plot_filter = dsp.ExpFilter(
-    np.tile(1e-1, config.N_FFT_BINS),
-    alpha_decay=0.5, alpha_rise=0.99
-)
 mel_gain = dsp.ExpFilter(
     np.tile(1e-1, config.N_FFT_BINS),
     alpha_decay=0.01, alpha_rise=0.99
@@ -76,17 +72,8 @@ def update(samples):
     clip_p = np.clip(concat_p, 0, 255).astype(int)
     copy_p = np.copy(clip_p)
 
-    # r = np.left_shift(copy_p[0][:].astype(int), 8)
-    # print(r)
-    # g = np.left_shift(copy_p[1][:].astype(int), 16)
     r = copy_p[0][:].astype(int)
     g = copy_p[1][:].astype(int)
     b = copy_p[2][:].astype(int)
 
-    # print('\n\n\n')
-    # print(r)
-    # print(g)
-    # print(b)
-    rgb = np.bitwise_or(np.bitwise_or(r, g), b)
-
-    return rgb
+    return (g, r, b)

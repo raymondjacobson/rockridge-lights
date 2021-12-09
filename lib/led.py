@@ -1,8 +1,10 @@
 import numpy as np
 import board
 import neopixel
-from lib.config import NUM_PIXELS, PIXEL_PIN, ORDER
-from lib.visualizers import scroll
+import time
+from lib.visualizers import dsp
+from lib.config import NUM_PIXELS, PIXEL_PIN, ORDER, MIN_VOLUME_THRESHOLD
+from lib.visualizers import scroll, gain, fft, topfft
 from lib import config
 
 pixels = neopixel.NeoPixel(
@@ -11,33 +13,30 @@ pixels = neopixel.NeoPixel(
     pixel_order=neopixel.GRB,
     auto_write=False
 )
+volume = dsp.ExpFilter(
+    config.MIN_VOLUME_THRESHOLD,
+    alpha_decay=0.02, alpha_rise=0.02
+)
 
 CHUNK = 1024
 
-_prev_pixels = np.empty(NUM_PIXELS)
-def write(data):
-    global _prev_pixels
-    for i in range(len(data)):
-        if np.array_equal(data[i], _prev_pixels[i]):
-            continue
-        pixels[i] = int(data[i])
-
-    _prev_pixels = np.copy(data)
+def write(g, r, b):
+    for i in range(NUM_PIXELS):
+        pixels[i] = (int(g[i]), int(r[i]), int(b[i]))
     pixels.show()
 
 def update(stream_data):
     y = np.frombuffer(stream_data, dtype=np.int16)
     y = y.astype(np.float32)[:int(len(y) / 2)]
-    rgb = scroll.update(y)
-    # import sys
-    # sys.exit(1)
-    write(rgb)
-    # peak = np.average(np.abs(human_data)) * 2
-    # power = peak / 40000.
-    # r = min(power * 255, 255)
-    # g = 0
-    # b = 0
-    # pixels.fill((g, r, b))
+    vol = np.max(np.abs(y))
+    if vol < config.MIN_VOLUME_THRESHOLD:
+        print('No audio input. Volume below threshold. Volume:', vol)
+        return
+    # (g, r, b) = scroll.update(y)
+    # (g, r, b) = gain.update(y)
+    # (g, r, b) = fft.update(y)
+    (g, r, b) = topfft.update(y)
+    write(g, r, b)
 
 def loading(percent):
     num_lights = int(percent * NUM_PIXELS)

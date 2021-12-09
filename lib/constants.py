@@ -7,3 +7,4 @@ class Sequence(Enum):
     XMAS = 4
     OFF = 5
     XMAS2 = 6
+    SANTA = 7

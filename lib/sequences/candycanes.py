@@ -8,8 +8,7 @@ pixels = neopixel.NeoPixel(
     PIXEL_PIN,
     NUM_PIXELS,
     pixel_order=ORDER,
-    auto_write=False,
-    brightness=0.2
+    auto_write=False
 )
 
 RED = [0, 255, 0]
@@ -37,7 +36,7 @@ time.sleep(2)
 cane_position = 0
 counter = 0
 current_fade_percent = 0
-crossfade_steps = 50
+crossfade_steps = 5
 rotated = False
 while True:
     for i in range(0, NUM_CANES):
@@ -60,4 +59,4 @@ while True:
     current_fade_percent = (current_fade_percent + 1) % crossfade_steps
     counter = counter + 1
     write(data)
-    time.sleep(.0001)
+    time.sleep(.01)

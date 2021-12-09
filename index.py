@@ -4,6 +4,7 @@ import subprocess
 import sys
 import time
 from lib import audio
+from lib import config
 from lib import twt
 from lib import led
 from lib.constants import Sequence
@@ -12,8 +13,6 @@ SEQUENCE = None
 PROCESS = None
 STREAM = None
 LAST_TWEET_ID = None
-POLL_TWITTER = False
-POLL_SEC = 5
 
 def persist_last_tweet_id(tweet_id):
     with open('./last_tweet.txt', 'w') as f:
@@ -49,8 +48,8 @@ def main():
     LAST_TWEET_ID = get_last_tweet_id()
     counter = 0
     while True:
-        if counter % POLL_SEC == 0:
-            if POLL_TWITTER:
+        if counter % config.POLL_TWITTER_SEC == 0:
+            if config.POLL_TWITTER:
                 print(f"Checking for new tweets, last id is {LAST_TWEET_ID}")
                 (
                     new_sequence,
@@ -90,6 +89,8 @@ def main():
                         PROCESS = run_sequence('./lib/sequences/xmas.py')
                     elif new_sequence == Sequence.XMA2S:
                         PROCESS = run_sequence('./lib/sequences/xmas2.py')
+                    elif new_sequence == Sequence.SANTA:
+                        PROCESS = run_sequence('./lib/sequences/santa.py')
                     elif new_sequence == Sequence.OFF:
                         PROCESS = run_sequence('./lib/sequences/off.py')
                     else:

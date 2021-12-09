@@ -64,6 +64,8 @@ def parse_tweet(text):
             return (Sequence.XMAS, None)
         elif item == 'xmas2':
             return (Sequence.XMAS2, None)
+        elif item == 'santa':
+            return (Sequence.SANTA, None)
         else:
             # rip bad tweet
             raise Exception('Could not find sequence')
