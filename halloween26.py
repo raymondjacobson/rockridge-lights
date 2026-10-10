@@ -56,6 +56,14 @@ def distance(a, b):
     return np.abs((a - b + NUM_PIXELS / 2) % NUM_PIXELS - NUM_PIXELS / 2)
 
 
+def red_sweep():
+    """The whole strip slowly swells from a low red glow to full red and back."""
+    period = 12
+    for t, dt, fade in frames():
+        level = 0.05 + 0.95 * (0.5 - 0.5 * math.cos(2 * math.pi * t / period))
+        show(tint(np.full(NUM_PIXELS, level), RED))
+
+
 def upside_down_vines():
     """Vines creep out from random seeds, pulse, and slowly turn around the house."""
     vines = np.zeros(NUM_PIXELS)
@@ -222,16 +230,19 @@ def joyce_wall():
         show(tint(level, RED) + tint(level * warm * 0.12, np.array([0.0, 1.0, 0.0])), fade)
 
 
+# The full Halloween set, parked until the strip's power is sorted out.
+PATTERNS = [
+    upside_down_vines,
+    heartbeat,
+    ember_glow,
+    blood_drips,
+    breathing_tide,
+    rifts,
+    watching_eyes,
+    lava,
+    orbiting_comets,
+    joyce_wall,
+]
+
 if __name__ == "__main__":
-    rotate([
-        upside_down_vines,
-        heartbeat,
-        ember_glow,
-        blood_drips,
-        breathing_tide,
-        rifts,
-        watching_eyes,
-        lava,
-        orbiting_comets,
-        joyce_wall,
-    ], seconds=PATTERN_SECONDS)
+    rotate([red_sweep], seconds=PATTERN_SECONDS)

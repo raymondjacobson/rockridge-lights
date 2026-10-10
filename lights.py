@@ -29,7 +29,7 @@ BRIGHTNESS = 0.4
 pixels = neopixel.NeoPixel(
     board.D18,
     NUM_PIXELS,
-    pixel_order=neopixel.RGB,
+    pixel_order="BGR",  # this strip takes blue first; RGB swaps red and blue
     auto_write=False,
     brightness=BRIGHTNESS
 )
