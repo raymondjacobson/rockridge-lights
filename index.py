@@ -34,79 +34,93 @@ def run_sequence(file):
     )
 
 def main():
-    global SEQUENCE, LAST_TWEET_ID, STREAM, PROCESS
-    print(sys.argv)
     if len(sys.argv) > 1:
         manual_sequence = sys.argv[1]
-        if 'youtube' in manual_sequence:
-            wav_file = audio.get_wav_from_youtube(manual_sequence)
-            audio.play(wav_file, led.update)
-        else:
-            PROCESS = run_sequence(manual_sequence)
-            SEQUENCE = 'manual'
+        PROCESS = run_sequence(manual_sequence)
+        SEQUENCE = 'manual'
 
-    LAST_TWEET_ID = get_last_tweet_id()
-    counter = 0
-    while True:
-        if counter % config.POLL_TWITTER_SEC == 0:
-            if config.POLL_TWITTER:
-                print(f"Checking for new tweets, last id is {LAST_TWEET_ID}")
-                (
-                    new_sequence,
-                    youtube_url,
-                    last_tweet_id
-                ) = twt.poll_for_tweets(LAST_TWEET_ID)
-                LAST_TWEET_ID = last_tweet_id
-                persist_last_tweet_id(LAST_TWEET_ID)
-                print(f"Got tweets, id is {LAST_TWEET_ID}")
-            else:
-                new_sequence = False
-                youtube_url = None
-                last_tweet_id = LAST_TWEET_ID
+# def main():
+#     global SEQUENCE, LAST_TWEET_ID, STREAM, PROCESS
+#     print(sys.argv)
+#     if len(sys.argv) > 1:
+#         manual_sequence = sys.argv[1]
+#         if 'youtube' in manual_sequence:
+#             wav_file = audio.get_wav_from_youtube(manual_sequence)
+#             audio.play(wav_file, led.update)
+#         else:
+#             PROCESS = run_sequence(manual_sequence)
+#             SEQUENCE = 'manual'
 
-            try:
-                if new_sequence:
-                    SEQUENCE = new_sequence
-                    print(f"Discovered new sequence {new_sequence}, {youtube_url}")
+#     LAST_TWEET_ID = get_last_tweet_id()
+#     counter = 0
+#     while True:
+#         if counter % config.POLL_TWITTER_SEC == 0:
+#             if config.POLL_TWITTER:
+#                 try:
+#                     print(f"Checking for new tweets, last id is {LAST_TWEET_ID}")
+#                     (
+#                         new_sequence,
+#                         youtube_url,
+#                         last_tweet_id
+#                     ) = twt.poll_for_tweets(LAST_TWEET_ID)
+#                     LAST_TWEET_ID = last_tweet_id
+#                     persist_last_tweet_id(LAST_TWEET_ID)
+#                     print(f"Got tweets, id is {LAST_TWEET_ID}")
+#                 except Exception as e:
+#                     new_sequence = False
+#                     youtube_url = None
+#                     last_tweet_id = LAST_TWEET_ID
+#             else:
+#                 new_sequence = False
+#                 youtube_url = None
+#                 last_tweet_id = LAST_TWEET_ID
 
-                    # Terminate existing sequence
-                    if PROCESS:
-                        PROCESS.terminate()
-                        PROCESS = None
-                    if STREAM:
-                        audio.terminate(STREAM)
+#             try:
+#                 if new_sequence:
+#                     SEQUENCE = new_sequence
+#                     print(f"Discovered new sequence {new_sequence}, {youtube_url}")
 
-                    # Run a new sequence
-                    if new_sequence == Sequence.YOUTUBE:
-                        wav_file = audio.get_wav_from_youtube(youtube_url)
-                        audio.play(wav_file, led.update)
-                        # create new audio / start sequence
-                    elif new_sequence == Sequence.CANDYCANES:
-                        PROCESS = run_sequence('./lib/sequences/candycanes.py')
-                    elif new_sequence == Sequence.STARRYNIGHT:
-                        PROCESS = run_sequence('./lib/sequences/starrynight.py')
-                    elif new_sequence == Sequence.XMAS:
-                        PROCESS = run_sequence('./lib/sequences/xmas.py')
-                    elif new_sequence == Sequence.XMA2S:
-                        PROCESS = run_sequence('./lib/sequences/xmas2.py')
-                    elif new_sequence == Sequence.SANTA:
-                        PROCESS = run_sequence('./lib/sequences/santa.py')
-                    elif new_sequence == Sequence.OFF:
-                        PROCESS = run_sequence('./lib/sequences/off.py')
-                    else:
-                        print(f"Could not play sequence {new_sequence}")
-                else:
-                    # Default sequence to play if none
-                    if not SEQUENCE:
-                        SEQUENCE = Sequence.CANDYCANES
-                        # PROCESS = run_sequence('./lib/sequences/candycanes.py')
+#                     # Terminate existing sequence
+#                     if PROCESS:
+#                         PROCESS.terminate()
+#                         PROCESS = None
+#                     if STREAM:
+#                         audio.terminate(STREAM)
 
-            except Exception as e:
-                print(e)
-                print(f"Failed at tweet {LAST_TWEET_ID}")
+#                     # Run a new sequence
+#                     if new_sequence == Sequence.YOUTUBE:
+#                         wav_file = audio.get_wav_from_youtube(youtube_url)
+#                         audio.play(wav_file, led.update)
+#                         # create new audio / start sequence
+#                     elif new_sequence == Sequence.CANDYCANES:
+#                         PROCESS = run_sequence('./lib/sequences/candycanes.py')
+#                     elif new_sequence == Sequence.STARRYNIGHT:
+#                         PROCESS = run_sequence('./lib/sequences/starrynight.py')
+#                     elif new_sequence == Sequence.XMAS:
+#                         PROCESS = run_sequence('./lib/sequences/xmas.py')
+#                     elif new_sequence == Sequence.XMAS2:
+#                         PROCESS = run_sequence('./lib/sequences/xmas2.py')
+#                     elif new_sequence == Sequence.SANTA:
+#                         PROCESS = run_sequence('./lib/sequences/santa.py')
+#                     elif new_sequence == Sequence.XMAS3:
+#                         PROCESS = run_sequence('./lib/sequences/xmas3.py')
+#                     elif new_sequence == Sequence.CRAZY:
+#                         PROCESS = run_sequence('./lib/sequences/crazy.py')
+#                     elif new_sequence == Sequence.OFF:
+#                         PROCESS = run_sequence('./lib/sequences/off.py')
+#                     else:
+#                         print(f"Could not play sequence {new_sequence}")
+#                 else:
+#                     # Default sequence to play if none
+#                     if not SEQUENCE:
+#                         SEQUENCE = Sequence.CANDYCANES
 
-        counter += 1
-        time.sleep(1)
+#             except Exception as e:
+#                 print(e)
+#                 print(f"Failed at tweet {LAST_TWEET_ID}")
+
+#         counter += 1
+#         time.sleep(1)
 
 def cleanup():
     if PROCESS:

@@ -64,8 +64,16 @@ def parse_tweet(text):
             return (Sequence.XMAS, None)
         elif item == 'xmas2':
             return (Sequence.XMAS2, None)
+        elif item == 'xmas3':
+            return (Sequence.XMAS3, None)
         elif item == 'santa':
             return (Sequence.SANTA, None)
+        elif item == 'crazy':
+            return (Sequence.CRAZY, None)
+        elif item.lower().replace(" ", "") == 'alliwantforchristmasisyou':
+            return (Sequence.YOUTUBE, 'https://www.youtube.com/watch?v=aAkMkVFwAoo')
+        elif item.lower().replace(" ", "") == 'winterwonderland':
+            return (Sequence.YOUTUBE, 'https://www.youtube.com/watch?v=oIKt5p3UmXg')
         else:
             # rip bad tweet
             raise Exception('Could not find sequence')
@@ -76,8 +84,8 @@ def poll_for_tweets(last_tweet_id):
     tweet_id = get_mentions(headers, last_tweet_id)
     if tweet_id != '':
         print(f"Got new tweet {tweet_id}")
-        tweet = get_tweet(headers, tweet_id)
         try:
+            tweet = get_tweet(headers, tweet_id)
             (sequence, youtube_url) = parse_tweet(tweet)
             return (sequence, youtube_url, tweet_id)
         except Exception as e:

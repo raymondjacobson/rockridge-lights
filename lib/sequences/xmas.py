@@ -14,9 +14,9 @@ while True:
     for i in range(0, 255):
         time.sleep(.01)
         pixels.fill((255 - i, i, 0))
-    time.sleep(30)
+    time.sleep(60)
     for i in range(0, 255):
         time.sleep(.01)
         pixels.fill((i, 255 - i, 0))
-    time.sleep(30)
+    time.sleep(60)
 

@@ -55,8 +55,11 @@ def get_wav_from_youtube(youtube_url):
 
 
 def play(file, callback):
+    silence = chr(0)*config.FPS*file.getnchannels()*2 
     def reader(in_data, frame_count, time_info, status):
         data = file.readframes(frame_count)
+        if (data == ''):
+            data = silence
         callback(data)
         return (data, pyaudio.paContinue)
 

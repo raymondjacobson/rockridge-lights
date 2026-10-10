@@ -8,3 +8,5 @@ class Sequence(Enum):
     OFF = 5
     XMAS2 = 6
     SANTA = 7
+    XMAS3 = 8
+    CRAZY = 9

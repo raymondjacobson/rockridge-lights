@@ -1,6 +1,7 @@
 import time
 import board
 import neopixel
+import numpy as np
 from lib.config import NUM_PIXELS, PIXEL_PIN, ORDER
 
 pixels = neopixel.NeoPixel(

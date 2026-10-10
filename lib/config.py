@@ -2,7 +2,7 @@ import board
 import neopixel
 
 PIXEL_PIN = board.D18
-NUM_PIXELS = 400
+NUM_PIXELS = 500
 ORDER = neopixel.GRB
 
 # Visualizations
@@ -16,4 +16,4 @@ MIN_VOLUME_THRESHOLD = 1e-10
 
 # Twitter
 POLL_TWITTER = True
-POLL_TWITTER_SEC = 10
+POLL_TWITTER_SEC = 30
