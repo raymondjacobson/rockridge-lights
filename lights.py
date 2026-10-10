@@ -29,7 +29,7 @@ BRIGHTNESS = 0.4
 pixels = neopixel.NeoPixel(
     board.D18,
     NUM_PIXELS,
-    pixel_order="BRG",  # this strip takes blue, red, green (not the usual RGB)
+    pixel_order=neopixel.RGB,
     auto_write=False,
     brightness=BRIGHTNESS
 )
@@ -60,6 +60,7 @@ def rotate(animations, seconds=30, shuffle=True):
             if shuffle:
                 random.shuffle(animations)
             for animation in animations:
+                print(time.strftime("%H:%M:%S"), animation.__name__, flush=True)
                 start_time = time.time()
                 while time.time() - start_time < seconds:
                     animation()
