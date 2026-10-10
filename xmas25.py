@@ -1,30 +1,9 @@
-import board
-import neopixel
 from time import sleep
 import random
-import time
 import math
 
-NUM_PIXELS = 500
+from lights import pixels, NUM_PIXELS, rotate
 
-pixels = neopixel.NeoPixel(
-    board.D18,
-    NUM_PIXELS,
-    pixel_order=neopixel.RGB,
-    auto_write=False,
-    brightness=0.4
-)
-
-# Halloween colors
-orange = (255, 85, 0)
-green = (0, 255, 60)
-purple = (128, 0, 128)
-dark_red = (139, 0, 0)
-colors = [orange, green, purple, dark_red]
-
-# Function to create a candle-like flicker effect
-def flicker_color(color, intensity=0.8):
-    return tuple(int(c * intensity * random.uniform(0.5, 1)) for c in color)
 
 def twinkling_snowfall():
     """Simulate a gentle snowfall with random twinkling lights."""
@@ -552,8 +531,8 @@ def candycane_growth():
         sleep(0.02)  # High FPS
 
 
-def main():
-    animations = [
+if __name__ == "__main__":
+    rotate([
         swirling_blizzard,
         fireplace_flicker_with_growth,
         candycane_growth,
@@ -578,14 +557,4 @@ def main():
         fireplace_ember_glow,
         ornament_swing,
         holiday_garland_sweep,
-    ]
-
-    while True:
-        random.shuffle(animations)
-        for animation in animations:
-            start_time = time.time()
-            while time.time() - start_time < 30:  # Run each for 30 seconds
-                animation()
-
-if __name__ == "__main__":
-    main()
+    ])
