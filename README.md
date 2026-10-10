@@ -36,6 +36,6 @@ Colors are `(R, G, B)`. To change brightness for one show, set `pixels.brightnes
 
 ## Layout
 
-- `xmas25.py`, `test_white.py`: current shows
+- `halloween26.py`, `xmas25.py`, `test_white.py`: current shows
 - `archive/`: past seasons' scripts. They're self-contained and still run with `python archive/<name>.py`.
 - `index.py`, `lib/`, `songs/`: the original 2021 tweet-controlled sequences and audio visualizer. They're no longer used (the Twitter polling is dead), and they use their own strip setup in `lib/config.py`.
