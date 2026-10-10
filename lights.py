@@ -23,13 +23,13 @@ import time
 import board
 import neopixel
 
-NUM_PIXELS = 500
+NUM_PIXELS = 400
 BRIGHTNESS = 0.4
 
 pixels = neopixel.NeoPixel(
     board.D18,
     NUM_PIXELS,
-    pixel_order="BGR",  # this strip takes blue first; RGB swaps red and blue
+    pixel_order="BRG",  # this strip takes blue, red, green (not the usual RGB)
     auto_write=False,
     brightness=BRIGHTNESS
 )

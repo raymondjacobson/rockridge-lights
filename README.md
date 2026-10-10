@@ -1,6 +1,6 @@
 # RockridgeLights
 
-500 RGB LEDs driven from a Raspberry Pi (data on GPIO18).
+400 LEDs driven from a Raspberry Pi (data on GPIO18).
 
 ## Running a show
 
