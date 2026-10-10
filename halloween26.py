@@ -230,7 +230,6 @@ def joyce_wall():
         show(tint(level, RED) + tint(level * warm * 0.12, np.array([0.0, 1.0, 0.0])), fade)
 
 
-# The full Halloween set, parked until the strip's power is sorted out.
 PATTERNS = [
     upside_down_vines,
     heartbeat,
@@ -245,4 +244,4 @@ PATTERNS = [
 ]
 
 if __name__ == "__main__":
-    rotate([red_sweep], seconds=PATTERN_SECONDS)
+    rotate(PATTERNS, seconds=PATTERN_SECONDS)
