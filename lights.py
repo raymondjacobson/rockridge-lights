@@ -13,7 +13,7 @@ hands them to rotate():
         rotate([my_animation])
 
 Pass `scheduled=True` to rotate() to run only from 30 minutes before sunset
-until midnight, staying dark (but running) the rest of the day.
+until 11:59pm, staying dark (but running) the rest of the day.
 
 Run it with `nohup python <show>.py &`. Killing the process (Ctrl-C or
 `kill <pid>`) turns the lights off instead of freezing the last frame.
@@ -31,10 +31,12 @@ import neopixel
 NUM_PIXELS = 400
 BRIGHTNESS = 0.4
 
-# Scheduled shows come on this long before sunset and go off at midnight.
+# Scheduled shows come on this long before sunset and go off at OFF_HOUR:OFF_MINUTE.
 LATITUDE = 37.844  # Rockridge, Oakland
 LONGITUDE = -122.251
 MINUTES_BEFORE_SUNSET = 30
+OFF_HOUR = 23
+OFF_MINUTE = 59
 
 pixels = neopixel.NeoPixel(
     board.D18,
@@ -79,12 +81,15 @@ def show_start(day):
     return sunset(day) - timedelta(minutes=MINUTES_BEFORE_SUNSET)
 
 
-def wait_for_show_time():
-    """If it's between midnight and the evening's start time, go dark and wait."""
+def wait_for_show_time(seconds):
+    """Go dark and wait unless the next `seconds` fit before the off time."""
     now = datetime.now().astimezone()
     start = show_start(now.date())
-    if now >= start:
+    end = now.replace(hour=OFF_HOUR, minute=OFF_MINUTE, second=0, microsecond=0)
+    if start <= now and now + timedelta(seconds=seconds) <= end:
         return
+    if now > start:
+        start = show_start(now.date() + timedelta(days=1))
     clear()
     print(time.strftime("%H:%M:%S"), "lights off until", start.strftime("%H:%M"), flush=True)
     while datetime.now().astimezone() < start:
@@ -96,7 +101,8 @@ def rotate(animations, seconds=30, shuffle=True, scheduled=False):
 
     Each animation is called repeatedly until its time is up, so it can be
     a single pass or a longer self-contained loop. With `scheduled`, the
-    lights only run from MINUTES_BEFORE_SUNSET before sunset until midnight.
+    lights only run from MINUTES_BEFORE_SUNSET before sunset until
+    OFF_HOUR:OFF_MINUTE (a pattern that would run past it isn't started).
     """
     animations = list(animations)
     try:
@@ -105,7 +111,7 @@ def rotate(animations, seconds=30, shuffle=True, scheduled=False):
                 random.shuffle(animations)
             for animation in animations:
                 if scheduled:
-                    wait_for_show_time()
+                    wait_for_show_time(seconds)
                 print(time.strftime("%H:%M:%S"), animation.__name__, flush=True)
                 start_time = time.time()
                 while time.time() - start_time < seconds:
