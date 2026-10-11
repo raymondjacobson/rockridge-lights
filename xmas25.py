@@ -344,6 +344,8 @@ def polar_express():
                 pixels[i] = (255, 0, 0)  # Red train car
             else:
                 pixels[i] = (0, 0, 0)
+        pixels.show()
+        sleep(0.02)
 
 
 def peppermint_spin():
@@ -531,30 +533,32 @@ def candycane_growth():
         sleep(0.02)  # High FPS
 
 
+ANIMATIONS = [
+    swirling_blizzard,
+    fireplace_flicker_with_growth,
+    candycane_growth,
+    christmas_snowstorm_symphony,
+    twinkling_snowfall,
+    candy_cane_stripes,
+    christmas_tree_glow,
+    northern_lights_glow,
+    snowstorm_chaos,
+    wreath_sparkle,
+    gift_unwrapping,
+    fireplace_flicker,
+    icicle_drips,
+    starry_night_twinkle,
+    candy_cane_spiral,
+    bell_chime_animation,
+    snowball_toss,
+    winter_aurora,
+    holiday_countdown,
+    polar_express,
+    # peppermint_spin,
+    fireplace_ember_glow,
+    ornament_swing,
+    holiday_garland_sweep,
+]
+
 if __name__ == "__main__":
-    rotate([
-        swirling_blizzard,
-        fireplace_flicker_with_growth,
-        candycane_growth,
-        christmas_snowstorm_symphony,
-        twinkling_snowfall,
-        candy_cane_stripes,
-        christmas_tree_glow,
-        northern_lights_glow,
-        snowstorm_chaos,
-        wreath_sparkle,
-        gift_unwrapping,
-        fireplace_flicker,
-        icicle_drips,
-        starry_night_twinkle,
-        candy_cane_spiral,
-        bell_chime_animation,
-        snowball_toss,
-        winter_aurora,
-        holiday_countdown,
-        polar_express,
-        # peppermint_spin,
-        fireplace_ember_glow,
-        ornament_swing,
-        holiday_garland_sweep,
-    ])
+    rotate(ANIMATIONS)
