@@ -244,4 +244,4 @@ PATTERNS = [
 ]
 
 if __name__ == "__main__":
-    rotate(PATTERNS, seconds=PATTERN_SECONDS)
+    rotate(PATTERNS, seconds=PATTERN_SECONDS, scheduled=True)

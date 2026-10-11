@@ -11,6 +11,8 @@ cd ~/rockridge-lights
 nohup python xmas25.py &
 ```
 
+Shows that call `rotate(..., scheduled=True)` (currently `halloween26.py`) turn on 30 minutes before sunset and off at midnight on their own, so you can leave them running. Location and timing are at the top of `lights.py`.
+
 To stop it, use `ps aux | grep python` to find the process, then `kill <pid>`. The lights turn off when it exits.
 
 `python test_white.py` sends a short white segment around the whole strip, which is handy for checking that the wiring is OK.
