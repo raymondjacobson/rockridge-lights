@@ -28,6 +28,7 @@ import signal
 import sys
 import threading
 import time
+import weakref
 
 try:
     import board
@@ -67,7 +68,9 @@ class Strip:
         self.to_leds = True
         self.listeners = []
         self.interrupt = threading.Event()
+        self.retired = weakref.WeakSet()  # stopped show threads, kept off the strip if they linger
         self._leds = None
+        self._lock = threading.RLock()
 
     def __len__(self):
         return self.n
@@ -84,19 +87,26 @@ class Strip:
     def fill(self, color):
         self.buffer = [tuple(color)] * self.n
 
+    def stopped(self):
+        """Whether the show drawing from this thread has been told to stop."""
+        return self.interrupt.is_set() or threading.current_thread() in self.retired
+
     def show(self):
-        if self.interrupt.is_set():
+        if self.stopped():
             raise Stopped
         self.send()
 
     def send(self):
         """Like show(), but also works while the show is being stopped."""
-        if self.to_leds:
-            leds = self._open_leds()
-            if leds.brightness != self.brightness:
-                leds.brightness = self.brightness
-            leds[:] = self.buffer
-            leds.show()
+        if threading.current_thread() in self.retired:
+            raise Stopped
+        with self._lock:
+            if self.to_leds:
+                leds = self._open_leds()
+                if leds.brightness != self.brightness:
+                    leds.brightness = self.brightness
+                leds[:] = self.buffer
+                leds.show()
         for listener in self.listeners:
             listener(self.buffer)
 
@@ -110,6 +120,14 @@ class Strip:
 
     def release_leds(self):
         """Turn the LEDs off and let go of them so another process can use them."""
+        if not self._lock.acquire(timeout=3):  # a stuck show has them; the panel restarts
+            return
+        try:
+            self._release_leds()
+        finally:
+            self._lock.release()
+
+    def _release_leds(self):
         if self._leds is not None:
             self._leds.fill(OFF)
             self._leds.show()
@@ -175,7 +193,7 @@ def wait_for_show_time(seconds):
     start = next_show_start()
     print(time.strftime("%H:%M:%S"), "lights off until", start.strftime("%H:%M"), flush=True)
     while datetime.now().astimezone() < start:
-        if pixels.interrupt.wait(30):
+        if pixels.interrupt.wait(30) or pixels.stopped():
             raise Stopped
 
 

@@ -14,6 +14,7 @@ import os
 import re
 import signal
 import subprocess
+import sys
 import threading
 import time
 import traceback
@@ -207,7 +208,12 @@ class Engine:
             lights.pixels.interrupt.set()
             self.thread.join(10)
             if self.thread.is_alive():
-                print("show didn't stop within 10 seconds", flush=True)
+                # Usually it's stuck inside the LED library, which Python can't
+                # interrupt, and it keeps the strip. Keep it off the strip if it
+                # wakes, and start the panel over so the strip is really let go.
+                print("show didn't stop within 10 seconds; restarting the panel", flush=True)
+                lights.pixels.retired.add(self.thread)
+                threading.Timer(3, restart_panel).start()
         self.thread = None
 
     # Settings
@@ -300,13 +306,21 @@ def find_other_shows():
 
 
 def stop_process(pid):
+    """Stop a show and wait until it has let go of the strip."""
     try:
-        os.kill(pid, signal.SIGTERM)
-        for _ in range(50):
-            os.kill(pid, 0)
-            time.sleep(0.1)
+        for sig in (signal.SIGTERM, signal.SIGKILL):
+            os.kill(pid, sig)
+            for _ in range(50):
+                os.kill(pid, 0)
+                time.sleep(0.1)
     except ProcessLookupError:
         pass
+
+
+def restart_panel():
+    """Start this process over from saved state."""
+    engine.save()
+    os.execv(sys.executable, [sys.executable] + sys.argv)
 
 
 def prepare_tracks():
