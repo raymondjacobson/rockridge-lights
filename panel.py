@@ -1,14 +1,16 @@
 """Web control panel for the lights.
 
 Run it on the Pi with `nohup python panel.py > panel.log 2>&1 &` and open
-http://raspberrypi.local:8080 on a laptop or phone. Pick any show to watch it
-in the browser; "Send to lights" plays it on the real strip instead (stopping
-any show that was started by hand), with sound on the Bluetooth speaker.
+http://raspberrypi.local:8080 on a laptop or phone. Anything you pick plays
+in the browser preview, with its sound in the browser. "Send to lights"
+plays the preview's pick on the real strip (stopping any show that was
+started by hand), with sound on the Bluetooth speaker. The lights keep
+playing it while you preview something else.
 
-It also runs on a laptop (`python3 panel.py`, needs flask and numpy), where
-there's no strip and it only previews.
+Each of the two runs in its own process (show.py), so a stuck show can
+always be stopped. It also runs on a laptop (`python3 panel.py`, needs flask
+and numpy), where there's no strip and it only previews.
 """
-import base64
 import json
 import os
 import re
@@ -20,38 +22,22 @@ import time
 import traceback
 from pathlib import Path
 
-import numpy as np
 from flask import Flask, Response, abort, jsonify, request, send_file
 from werkzeug.utils import secure_filename
 
 import audio
-import halloween26
 import halloween_audio
 import lights
-import test_white
-import xmas25
+from programs import PROGRAM, PROGRAMS
 
 ROOT = Path(__file__).resolve().parent
 STATE_FILE = ROOT / "panel_state.json"
 PORT = 8080
 FPS = 30
-
-PROGRAMS = [
-    {"id": "halloween_audio", "name": "Halloween with sound", "seconds": 1, "shuffle": False,
-     "play_all": [halloween_audio.halloween_night],
-     "animations": halloween_audio.SOUNDSCAPES + halloween_audio.VISUALIZERS},
-    {"id": "halloween26", "name": "Halloween reds", "seconds": halloween26.PATTERN_SECONDS,
-     "play_all": halloween26.PATTERNS, "animations": halloween26.PATTERNS + [halloween26.red_sweep]},
-    {"id": "xmas25", "name": "Christmas 2025", "seconds": 30, "animations": xmas25.ANIMATIONS},
-    {"id": "tests", "name": "Tests", "seconds": 30, "animations": [test_white.white_circle]},
-]
-PROGRAM = {p["id"]: p for p in PROGRAMS}
+PREVIEW_IDLE_SECONDS = 120  # stop the preview this long after the last browser leaves
 
 DEFAULT_STATE = {
-    "program": None,     # what to play: a program id,
-    "animation": None,   # optionally one animation in it,
-    "track": None,       # and for sound shows, optionally one track
-    "output": "preview",  # or "lights"
+    "lights": None,      # what's on the lights: {"program", "animation", "track"}, or None
     "schedule": True,    # on the lights, only play between sunset and OFF_HOUR
     "brightness": lights.BRIGHTNESS,
     "volume": audio.volume,
@@ -67,228 +53,229 @@ def doc(function):
     return (function.__doc__ or "").strip().split("\n")[0]
 
 
-class Engine:
-    """Runs the chosen show in a background thread and keeps the browsers up to date."""
+def load_state():
+    state = dict(DEFAULT_STATE)
+    try:
+        saved = json.loads(STATE_FILE.read_text())
+    except (OSError, ValueError):
+        return state
+    if "output" in saved:  # from before the lights and the preview were separate
+        if saved["output"] == "lights" and saved.get("program"):
+            saved["lights"] = {k: saved.get(k) for k in ("program", "animation", "track")}
+    state.update({k: saved[k] for k in DEFAULT_STATE if k in saved})
+    return state
 
-    def __init__(self):
+
+class Player:
+    """One show running in a show.py process: on the lights, or the preview."""
+
+    def __init__(self, engine, on_lights):
+        self.engine = engine
+        self.on_lights = on_lights
         self.lock = threading.RLock()
-        self.changed = threading.Condition()
-        self.thread = None
-        self.state = dict(DEFAULT_STATE)
-        try:
-            self.state.update(json.loads(STATE_FILE.read_text()))
-        except (OSError, ValueError):
-            pass
-        self.version = 0
+        self.process = None
+        self.pick = None
+        self.playing = self.error = self.audio = None
         self.frame = ""
         self.frame_seq = 0
+
+    def snapshot(self):
+        now = time.time()
+        a = self.audio
+        return {
+            **(self.pick or {"program": None, "animation": None, "track": None}),
+            "playing": self.playing,
+            "error": self.error,
+            "audio": a and {
+                **a,
+                "url": "/sounds/{}/{}.mp3".format(a["kind"], a["track"]),
+                "elapsed": now - a["started"],
+            },
+        }
+
+    def play(self, pick, **settings):
+        with self.lock:
+            self.stop()
+            self.pick = pick
+            if pick is None:
+                return
+            args = dict(pick, lights=self.on_lights, **settings)
+            self.process = subprocess.Popen(
+                [sys.executable, str(ROOT / "show.py"), json.dumps(args)], cwd=str(ROOT),
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True,
+                start_new_session=True)  # its own group, so its sound player is stopped with it
+            threading.Thread(target=self.read, args=(self.process,), daemon=True).start()
+            self.engine.bump()
+
+    def read(self, process):
+        for line in process.stdout:
+            if process is not self.process:
+                continue
+            try:
+                message = json.loads(line)
+            except ValueError:
+                continue
+            if "frame" in message:
+                with self.engine.changed:
+                    self.frame = message["frame"]
+                    self.frame_seq += 1
+                    self.engine.changed.notify_all()
+                continue
+            if "playing" in message:
+                self.playing = message["playing"]
+            if "audio" in message:
+                self.audio = message["audio"]
+            if "error" in message:
+                self.error = message["error"]
+            self.engine.bump()
+        code = process.wait()
+        if process is self.process:
+            self.playing = self.audio = None
+            if code and not self.error:
+                self.error = "the show quit unexpectedly"
+            self.engine.bump()
+
+    def tell(self, **changes):
+        process = self.process
+        if process:
+            try:
+                process.stdin.write(json.dumps(changes) + "\n")
+                process.stdin.flush()
+            except (BrokenPipeError, ValueError):
+                pass
+
+    def stop(self):
+        with self.lock:
+            process, self.process = self.process, None
+            self.pick = self.playing = self.error = self.audio = None
+            if process:
+                end_process(process)
+            self.engine.bump()
+
+
+def end_process(process):
+    """Stop a show.py process (it turns its lights off as it goes) and anything it started."""
+    process.terminate()
+    try:
+        process.wait(5)
+    except subprocess.TimeoutExpired:
+        print("show didn't stop within 5 seconds; killing it", flush=True)
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError):
+        pass
+    process.wait()
+
+
+class Engine:
+    """The lights and the preview, and keeping the browsers up to date."""
+
+    def __init__(self):
+        self.changed = threading.Condition()
+        self.state = load_state()
+        self.version = 0
         self.viewers = 0
-        self.playing = None
-        self.error = None
+        self.last_viewer = time.time()
         self.other_shows = []
         self.speaker = None
-        lights.pixels.listeners.append(self.on_frame)
-        audio.listeners.append(lambda playback: self.bump())
-
-    # Browsers
+        self.lights = Player(self, on_lights=True)
+        self.preview = Player(self, on_lights=False)
 
     def bump(self):
         with self.changed:
             self.version += 1
             self.changed.notify_all()
 
-    def on_frame(self, buffer):
-        if not self.viewers:
-            return
-        rgb = np.clip(np.asarray(buffer, dtype=float), 0, 255).astype(np.uint8)
-        with self.changed:
-            self.frame = base64.b64encode(rgb.tobytes()).decode()
-            self.frame_seq += 1
-            self.changed.notify_all()
-
     def snapshot(self):
-        playback = audio.current
-        now = time.time()
         today = lights.datetime.now().astimezone().date()
         return {
-            **self.state,
-            "playing": self.playing,
-            "error": self.error,
+            **{k: self.state[k] for k in ("schedule", "brightness", "volume", "latency")},
+            "lights": self.lights.snapshot(),
+            "preview": self.preview.snapshot(),
             "has_leds": lights.neopixel is not None,
             "other_shows": [name for _, name in self.other_shows],
             "speaker": self.speaker,
             "show_time": lights.is_show_time(),
             "window": [lights.show_start(today).strftime("%-I:%M %p"),
                        lights.show_end(today).strftime("%-I:%M %p")],
-            "audio": playback and {
-                "track": playback.track.name,
-                "title": playback.track.title,
-                "url": "/sounds/{}/{}.mp3".format(playback.track.kind, playback.track.name),
-                "elapsed": now - playback.started,
-                "duration": playback.track.duration,
-                "output": playback.output,
-            },
         }
-
-    # Playing
 
     def save(self):
         STATE_FILE.write_text(json.dumps(self.state, indent=2))
 
-    def play(self, program=None, animation=None, track=None):
-        with self.lock:
-            self.state.update(program=program, animation=animation, track=track)
+    def play(self, where, pick):
+        if where == "lights":
+            if pick and lights.neopixel is None:
+                raise ValueError("There's no LED strip on this machine")
+            self.state["lights"] = pick
             self.save()
-            self.restart()
+            self.start_lights()
+        else:
+            self.preview.play(pick)
 
-    def restart(self):
-        with self.lock:
-            self.stop_thread()
-            self.error = None
-            program = PROGRAM.get(self.state["program"])
-            if program is None:
-                lights.clear()
-                self.playing = None
-                self.bump()
-                return
-            animations = program.get("play_all", program["animations"])
-            name = self.state["animation"]
-            if name:
-                animations = [a for a in program["animations"] if a.__name__ == name][:1]
-            track = self.state["track"] and self.find_track(self.state["track"])
-            if track:
-                animations = [self.play_track(track, animations[0] if name else None)]
-            if not animations:
-                return
-            scheduled = self.state["schedule"] and self.state["output"] == "lights"
-            lights.pixels.interrupt.clear()
-            self.thread = threading.Thread(
-                target=self.run, daemon=True,
-                args=([self.watch(a) for a in animations], program["seconds"],
-                      program.get("shuffle", True), scheduled))
-            self.thread.start()
-
-    def find_track(self, name):
-        try:
-            return audio.find(name)
-        except KeyError:
-            return None
-
-    def play_track(self, track, visual=None):
-        if visual is None:
-            visual = halloween_audio.scene_for(track) if track.kind == "ambience" else halloween_audio.dance_of_the_dead
-
-        def animation():
-            visual(track)
-        animation.__name__ = visual.__name__
-        return animation
-
-    def watch(self, animation):
-        def watched():
-            if self.playing != animation.__name__:
-                self.playing = animation.__name__
-                self.bump()
-            animation()
-        watched.__name__ = animation.__name__
-        return watched
-
-    def run(self, animations, seconds, shuffle, scheduled):
-        try:
-            lights.rotate(animations, seconds=seconds, shuffle=shuffle, scheduled=scheduled)
-        except lights.Stopped:
-            pass
-        except Exception as e:
-            traceback.print_exc()
-            self.error = "{}: {}".format(type(e).__name__, e)
-            self.playing = None
-            self.bump()
-
-    def stop_thread(self):
-        if self.thread and self.thread.is_alive():
-            lights.pixels.interrupt.set()
-            self.thread.join(10)
-            if self.thread.is_alive():
-                # Usually it's stuck inside the LED library, which Python can't
-                # interrupt, and it keeps the strip. Keep it off the strip if it
-                # wakes, and start the panel over so the strip is really let go.
-                print("show didn't stop within 10 seconds; restarting the panel", flush=True)
-                lights.pixels.retired.add(self.thread)
-                threading.Timer(3, restart_panel).start()
-        self.thread = None
-
-    # Settings
+    def start_lights(self):
+        pick = self.state["lights"]
+        with self.lights.lock:
+            self.lights.stop()
+            if pick:
+                for pid, name in find_other_shows():
+                    print("stopping", name, pid, flush=True)
+                    stop_process(pid)
+            self.lights.play(pick, schedule=self.state["schedule"],
+                             brightness=self.state["brightness"], latency=self.state["latency"])
 
     def settings(self, changes):
-        if changes.get("output") == "lights" and lights.neopixel is None:
-            raise ValueError("There's no LED strip on this machine")
-        with self.lock:
-            if "brightness" in changes:
-                lights.pixels.brightness = self.state["brightness"] = min(1.0, max(0.02, float(changes["brightness"])))
-            if "volume" in changes:
-                self.state["volume"] = int(changes["volume"])
-                audio.set_volume(self.state["volume"])
-            if "latency" in changes:
-                audio.latency["pi"] = self.state["latency"] = float(changes["latency"])
-            restart = False
-            if "schedule" in changes and bool(changes["schedule"]) != self.state["schedule"]:
-                self.state["schedule"] = bool(changes["schedule"])
-                restart = self.state["output"] == "lights"
-            if "output" in changes and changes["output"] != self.state["output"]:
-                self.stop_thread()
-                self.set_output(changes["output"])
-                restart = True
-            self.save()
-            if restart:
-                self.restart()
-            self.bump()
-
-    def set_output(self, output):
-        if output == "lights":
-            for pid, name in find_other_shows():
-                print("stopping", name, pid, flush=True)
-                stop_process(pid)
-            lights.pixels.to_leds = True
-            audio.output = "pi"
-        else:
-            lights.pixels.to_leds = False
-            lights.pixels.release_leds()
-            audio.output = "browser"
-        self.state["output"] = output
+        if "brightness" in changes:
+            self.state["brightness"] = min(1.0, max(0.02, float(changes["brightness"])))
+            self.lights.tell(brightness=self.state["brightness"])
+        if "volume" in changes:
+            self.state["volume"] = int(changes["volume"])
+            audio.set_volume(self.state["volume"])
+        if "latency" in changes:
+            self.state["latency"] = float(changes["latency"])
+            self.lights.tell(latency=self.state["latency"])
+        if "schedule" in changes and bool(changes["schedule"]) != self.state["schedule"]:
+            self.state["schedule"] = bool(changes["schedule"])
+            if self.state["lights"]:
+                self.start_lights()
+        self.save()
+        self.bump()
 
     def start(self):
-        lights.pixels.brightness = self.state["brightness"]
-        audio.latency["pi"] = self.state["latency"]
         audio.volume = self.state["volume"]
-        output = self.state["output"]
-        if output == "lights" and lights.neopixel is None:
-            output = "preview"
-        self.set_output(output)
-        self.restart()
+        if self.state["lights"] and lights.neopixel is not None:
+            self.start_lights()
         threading.Thread(target=self.watch_system, daemon=True).start()
         threading.Thread(target=prepare_tracks, daemon=True).start()
 
     def watch_system(self):
-        """Every so often, note other shows and the speaker, and reconnect the speaker if it's dropped."""
+        """Every so often, note other shows and the speaker, reconnect the speaker if it's
+        dropped, and stop the preview once nobody's watching it."""
         tries = 0
         while True:
             others = find_other_shows()
             speaker = audio._bluetooth_sink()
-            if speaker is None and self.state["output"] == "lights" and tries % 6 == 0:
+            if speaker is None and self.lights.audio is not None and tries % 6 == 0:
                 reconnect_speaker()
             tries += 1
             if others != self.other_shows or speaker != self.speaker:
                 self.other_shows, self.speaker = others, speaker
                 self.bump()
+            if self.viewers:
+                self.last_viewer = time.time()
+            elif self.preview.process and time.time() - self.last_viewer > PREVIEW_IDLE_SECONDS:
+                self.preview.stop()
             time.sleep(10)
 
 
 def find_other_shows():
-    """(pid, script) for python scripts from this repo running in other processes."""
+    """(pid, script) for python scripts from this repo running in processes the panel didn't start."""
     shows = []
     if not os.path.isdir("/proc"):
         return shows
+    ours = {os.getpid()} | {p.process.pid for p in (engine.lights, engine.preview) if p.process}
     for pid in os.listdir("/proc"):
-        if not pid.isdigit() or int(pid) == os.getpid():
+        if not pid.isdigit() or int(pid) in ours:
             continue
         try:
             args = Path("/proc", pid, "cmdline").read_bytes().decode(errors="replace").split("\0")
@@ -315,12 +302,6 @@ def stop_process(pid):
                 time.sleep(0.1)
     except ProcessLookupError:
         pass
-
-
-def restart_panel():
-    """Start this process over from saved state."""
-    engine.save()
-    os.execv(sys.executable, [sys.executable] + sys.argv)
 
 
 def prepare_tracks():
@@ -400,22 +381,26 @@ def index():
 def stream():
     def events():
         engine.viewers += 1
-        sent_seq = sent_version = -1
-        last_frame = 0
+        players = {"lights": engine.lights, "preview": engine.preview}
+        sent = {where: -1 for where in players}
+        sent_version = -1
         try:
             while True:
                 with engine.changed:
-                    engine.changed.wait_for(
-                        lambda: engine.frame_seq != sent_seq or engine.version != sent_version, timeout=10)
-                    seq, version, frame = engine.frame_seq, engine.version, engine.frame
+                    engine.changed.wait_for(lambda: engine.version != sent_version or any(
+                        p.frame_seq != sent[w] for w, p in players.items()), timeout=10)
+                    version = engine.version
+                    frames = {w: (p.frame_seq, p.frame) for w, p in players.items() if p.frame_seq != sent[w]}
                 if version != sent_version:
                     sent_version = version
                     yield "event: state\ndata: {}\n\n".format(json.dumps(engine.snapshot()))
-                if seq != sent_seq and frame:
-                    time.sleep(max(0, last_frame + 1 / FPS - time.time()))
-                    sent_seq, last_frame = seq, time.time()
-                    yield "event: frame\ndata: {}\n\n".format(frame)
-                elif seq == sent_seq:
+                for where, (seq, frame) in frames.items():
+                    sent[where] = seq
+                    if frame:
+                        yield "event: {}\ndata: {}\n\n".format(where, frame)
+                if frames:
+                    time.sleep(1 / FPS)
+                else:
                     yield ": still here\n\n"
         finally:
             engine.viewers -= 1
@@ -445,18 +430,26 @@ def library():
     )
 
 
+def where_from(body):
+    where = body.get("where", "preview")
+    if where not in ("preview", "lights"):
+        raise ValueError("play on the preview or the lights")
+    return where
+
+
 @app.route("/api/play", methods=["POST"])
 def play():
     body = request.get_json(force=True)
     if body.get("program") not in PROGRAM:
         raise ValueError("unknown program")
-    engine.play(body["program"], body.get("animation"), body.get("track"))
+    pick = {"program": body["program"], "animation": body.get("animation"), "track": body.get("track")}
+    engine.play(where_from(body), pick)
     return jsonify(ok=True)
 
 
 @app.route("/api/stop", methods=["POST"])
 def stop():
-    engine.play(None)
+    engine.play(where_from(request.get_json(force=True)), None)
     return jsonify(ok=True)
 
 
@@ -515,9 +508,8 @@ def bluetooth_disconnect():
 
 
 def shutdown():
-    engine.stop_thread()
-    if lights.pixels.to_leds:
-        lights.pixels.release_leds()
+    engine.preview.stop()
+    engine.lights.stop()
 
 
 if __name__ == "__main__":

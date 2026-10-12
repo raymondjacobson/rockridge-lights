@@ -80,6 +80,13 @@
   .dot.ok { background: var(--ok); }
   .subhead { margin: 16px 0 8px; font-size: 13px; color: var(--muted); }
   .hidden { display: none !important; }
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+  .card-head h2 { margin: 0; }
+  .on-lights { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 12px; align-items: center; }
+  .on-lights canvas { border-radius: 6px; }
+  .on-lights .what b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .on-lights .what .sub { color: var(--muted); font-size: 13px; }
+  .tag { font-size: 11px; color: var(--accent); border: 1px solid rgba(255, 122, 26, .5); border-radius: 99px; padding: 1px 7px; white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -91,27 +98,36 @@
 <div class="layout">
   <div class="stage-col">
     <div class="card">
-      <canvas id="house" width="1000" height="460" aria-label="Preview of the lights around the house"></canvas>
-      <div class="now">
-        <div style="min-width:0"><b id="now-title">Nothing playing</b> <span id="now-sub" class="sub"></span></div>
-        <span id="now-time" class="sub"></span>
+      <div class="card-head">
+        <h2>On the lights</h2>
+        <button id="lights-stop" class="danger">Turn off</button>
       </div>
-      <div class="progress"><div id="progress"></div></div>
+      <div class="on-lights">
+        <canvas id="lights-house" width="300" height="140" aria-label="What the real lights are showing"></canvas>
+        <div class="what"><b id="lights-title">Off</b><span id="lights-sub" class="sub"></span></div>
+      </div>
+      <div id="lights-warnings" class="warn"></div>
     </div>
 
     <div class="card">
-      <div class="row" style="justify-content: space-between">
-        <div class="seg" role="group" aria-label="Where the show plays">
-          <button id="out-preview">Preview here</button>
-          <button id="out-lights" class="lights">Send to lights</button>
-        </div>
+      <div class="card-head">
+        <h2>Preview</h2>
         <div class="row">
-          <button id="sound-here" title="Play the show's sound on this device while previewing">🔈 Sound off</button>
-          <button id="stop" class="danger">Stop</button>
+          <button id="sound-here" title="Play the preview's sound on this device">🔊 Sound on</button>
+          <button id="preview-stop">Stop</button>
         </div>
       </div>
-      <p id="out-note" class="note"></p>
-      <div id="warnings" class="warn"></div>
+      <canvas id="house" width="1000" height="460" aria-label="Preview of the lights around the house"></canvas>
+      <div class="now">
+        <div style="min-width:0"><b id="now-title">Pick something to preview</b> <span id="now-sub" class="sub"></span></div>
+        <span id="now-time" class="sub"></span>
+      </div>
+      <div class="progress"><div id="progress"></div></div>
+      <div class="row" style="margin-top: 12px">
+        <button id="send" class="primary">Send to lights</button>
+        <span id="send-note" class="note" style="margin:0"></span>
+      </div>
+      <div id="preview-warnings" class="warn"></div>
     </div>
   </div>
 
@@ -187,8 +203,9 @@
 <script>
 const N = 400;
 const $ = (id) => document.getElementById(id);
-let state = null, library = null, frame = new Uint8Array(N * 3);
-let receivedAt = 0, tab = null, soundHere = false;
+let state = null, library = null;
+const frames = { preview: new Uint8Array(N * 3), lights: new Uint8Array(N * 3) };
+let receivedAt = 0, tab = null, soundHere = recall('sound', 'on') !== 'off';
 
 function store(key, value) { try { localStorage.setItem(key, value); } catch (e) {} }
 function recall(key, fallback) { try { return localStorage.getItem(key) ?? fallback; } catch (e) { return fallback; } }
@@ -207,66 +224,72 @@ const pretty = (name) => name ? name.replace(/_/g, ' ').replace(/^./, (c) => c.t
 
 // ---- The house ----
 
-const canvas = $('house'), ctx = canvas.getContext('2d');
-let points = [];
+const views = [
+  { canvas: $('house'), frame: 'preview', pad: 40, dot: 3, glow: 9, points: [] },
+  { canvas: $('lights-house'), frame: 'lights', pad: 10, dot: 1.2, glow: 3.5, points: [] },
+];
 
 function layout() {
   const across = +recall('across', 140), corner = recall('corner', 'bl'), dir = recall('direction', 'cw');
   $('across').value = across; $('across-out').textContent = across;
   $('corner').value = corner; $('direction').value = dir;
   const down = (N - 2 * across) / 2;
-  const W = canvas.width, pad = 40, step = (W - 2 * pad) / across;
-  canvas.height = Math.round(down * step + 2 * pad);
-  const H = canvas.height;
-  // Walk clockwise from the bottom-left corner, then rotate/flip to match the strip.
-  const loop = [];
-  for (let i = 0; i < down; i++) loop.push([pad, H - pad - i * step]);
-  for (let i = 0; i < across; i++) loop.push([pad + i * step, pad]);
-  for (let i = 0; i < down; i++) loop.push([W - pad, pad + i * step]);
-  for (let i = 0; i < across; i++) loop.push([W - pad - i * step, H - pad]);
-  const startAt = { bl: 0, tl: down, tr: down + across, br: 2 * down + across }[corner];
-  points = [];
-  for (let i = 0; i < N; i++) {
-    const k = dir === 'cw' ? startAt + i : startAt - i;
-    points.push(loop[((k % N) + N) % N]);
+  for (const view of views) {
+    const canvas = view.canvas, pad = view.pad;
+    const W = canvas.width, step = (W - 2 * pad) / across;
+    canvas.height = Math.round(down * step + 2 * pad);
+    const H = canvas.height;
+    // Walk clockwise from the bottom-left corner, then rotate/flip to match the strip.
+    const loop = [];
+    for (let i = 0; i < down; i++) loop.push([pad, H - pad - i * step]);
+    for (let i = 0; i < across; i++) loop.push([pad + i * step, pad]);
+    for (let i = 0; i < down; i++) loop.push([W - pad, pad + i * step]);
+    for (let i = 0; i < across; i++) loop.push([W - pad - i * step, H - pad]);
+    const startAt = { bl: 0, tl: down, tr: down + across, br: 2 * down + across }[corner];
+    view.points = [];
+    for (let i = 0; i < N; i++) {
+      const k = dir === 'cw' ? startAt + i : startAt - i;
+      view.points.push(loop[((k % N) + N) % N]);
+    }
   }
 }
 
-function drawHouse() {
+function drawHouse(view) {
+  const canvas = view.canvas, ctx = canvas.getContext('2d'), frame = frames[view.frame], pad = view.pad;
   const W = canvas.width, H = canvas.height;
   ctx.globalCompositeOperation = 'source-over';
   ctx.fillStyle = '#050407';
   ctx.fillRect(0, 0, W, H);
   // A faint facade inside the lights.
   ctx.fillStyle = '#0c0a11';
-  ctx.fillRect(40, 40, W - 80, H - 80);
+  ctx.fillRect(pad, pad, W - 2 * pad, H - 2 * pad);
   ctx.fillStyle = '#100d16';
-  const doorW = Math.min(70, W * 0.08), doorH = (H - 80) * 0.55;
-  ctx.fillRect(W / 2 - doorW / 2, H - 40 - doorH, doorW, doorH);
-  const winW = W * 0.13, winH = (H - 80) * 0.32, winY = 40 + (H - 80) * 0.22;
+  const doorW = Math.min(70, W * 0.08), doorH = (H - 2 * pad) * 0.55;
+  ctx.fillRect(W / 2 - doorW / 2, H - pad - doorH, doorW, doorH);
+  const winW = W * 0.13, winH = (H - 2 * pad) * 0.32, winY = pad + (H - 2 * pad) * 0.22;
   for (const x of [W * 0.2, W * 0.8 - winW]) ctx.fillRect(x, winY, winW, winH);
 
   ctx.globalCompositeOperation = 'lighter';
   for (let i = 0; i < N; i++) {
     let r = frame[i * 3], g = frame[i * 3 + 1], b = frame[i * 3 + 2];
+    const [x, y] = view.points[i];
     if (r + g + b === 0) {
       ctx.fillStyle = '#1b1722';
-      ctx.beginPath(); ctx.arc(points[i][0], points[i][1], 2, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y, view.dot * 0.66, 0, 7); ctx.fill();
       continue;
     }
     // Screens show dim values darker than LEDs look, so lift them a little.
     r = 255 * Math.pow(r / 255, 0.5); g = 255 * Math.pow(g / 255, 0.5); b = 255 * Math.pow(b / 255, 0.5);
-    const [x, y] = points[i];
     ctx.fillStyle = `rgba(${r | 0},${g | 0},${b | 0},0.22)`;
-    ctx.beginPath(); ctx.arc(x, y, 9, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(x, y, view.glow, 0, 7); ctx.fill();
     ctx.fillStyle = `rgb(${r | 0},${g | 0},${b | 0})`;
-    ctx.beginPath(); ctx.arc(x, y, 3, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(x, y, view.dot, 0, 7); ctx.fill();
   }
 }
 
 function tick() {
-  drawHouse();
-  const a = state && state.audio;
+  for (const view of views) drawHouse(view);
+  const a = state && state.preview.audio;
   if (a) {
     const t = a.elapsed + (performance.now() - receivedAt) / 1000;
     $('now-time').textContent = `${fmt(Math.min(t, a.duration))} / ${fmt(a.duration)}`;
@@ -282,8 +305,8 @@ function tick() {
 
 const player = $('player');
 function syncSound() {
-  const a = state && state.audio;
-  const want = soundHere && state && state.output === 'preview' && a && a.output === 'browser';
+  const a = state && state.preview.audio;
+  const want = soundHere && a && a.output === 'browser';
   if (!want) { if (!player.paused) player.pause(); return; }
   const url = new URL(a.url, location.href).href;
   if (player.src !== url) { player.src = url; return; }  // loadedmetadata calls back here
@@ -296,12 +319,21 @@ function syncSound() {
 player.addEventListener('loadedmetadata', syncSound);
 setInterval(syncSound, 2000);
 
+function showSoundButton() {
+  $('sound-here').textContent = soundHere ? '🔊 Sound on' : '🔈 Sound off';
+}
 $('sound-here').onclick = () => {
   soundHere = !soundHere;
-  $('sound-here').textContent = soundHere ? '🔊 Sound here' : '🔈 Sound off';
-  if (soundHere) { player.play().catch(() => {}); }  // unlocks audio on phones
+  store('sound', soundHere ? 'on' : 'off');
+  showSoundButton();
   syncSound();
 };
+// Phones only let a page play sound that starts from a tap, so get the player going on the first one.
+const SILENCE = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+document.addEventListener('pointerdown', function unlock() {
+  document.removeEventListener('pointerdown', unlock, true);
+  if (!player.src) { player.src = SILENCE; player.play().catch(() => {}); }
+}, true);
 
 // ---- Live updates ----
 
@@ -313,37 +345,50 @@ function connect() {
     render();
     syncSound();
   });
-  events.addEventListener('frame', (e) => {
-    const bin = atob(e.data);
-    for (let i = 0; i < bin.length; i++) frame[i] = bin.charCodeAt(i);
-  });
+  for (const where of ['preview', 'lights']) {
+    events.addEventListener(where, (e) => {
+      const bin = atob(e.data), frame = frames[where];
+      for (let i = 0; i < bin.length; i++) frame[i] = bin.charCodeAt(i);
+    });
+  }
   events.onerror = () => { $('status').textContent = 'Reconnecting…'; $('status').className = 'chip'; };
 }
 
+function describe(p) {
+  // [title, subtitle] for what a player is playing.
+  const program = library && library.programs.find((x) => x.id === p.program);
+  if (!p.program) return [null, ''];
+  const title = pretty(p.playing || p.animation || '') || (program ? program.name : '');
+  const sub = p.audio ? `♪ ${p.audio.title}` : (program ? program.name : '');
+  return [title, sub];
+}
+
 function render() {
-  const s = state;
-  const lightsOn = s.output === 'lights';
-  $('status').textContent = lightsOn ? (s.schedule && !s.show_time ? 'Lights scheduled off' : 'On the lights') : 'Preview only';
-  $('status').className = 'chip' + (lightsOn ? ' live' : '');
-  $('out-preview').classList.toggle('on', !lightsOn);
-  $('out-lights').classList.toggle('on', lightsOn);
-  $('out-lights').disabled = !s.has_leds;
-  $('sound-here').classList.toggle('hidden', lightsOn);
-  $('out-note').textContent = lightsOn
-    ? `The real lights are showing this${s.speaker ? ', with sound on the Bluetooth speaker' : ''}. Preview stays in sync.`
-    : (s.has_leds ? 'Only this preview is running. The real lights aren\'t touched until you send it to them.'
-                  : 'This computer has no lights attached, so it can only preview.');
+  const s = state, L = s.lights, P = s.preview;
+  const lightsOn = !!L.program;
+  const dark = lightsOn && s.schedule && !s.show_time;
+  $('status').textContent = !lightsOn ? (s.other_shows.length ? 'Lights: started by hand' : 'Lights off') : dark ? 'Lights scheduled off' : 'Lights on';
+  $('status').className = 'chip' + (lightsOn && !dark ? ' live' : '');
 
-  const warnings = [];
-  if (!lightsOn && s.other_shows.length) warnings.push(`${s.other_shows.join(', ')} is running on the lights right now (started outside the panel). Sending to lights will stop it.`);
-  if (lightsOn && s.schedule && !s.show_time) warnings.push(`It's outside the show window, so the lights stay dark until ${s.window[0]}. Turn off the schedule in Settings to play now.`);
-  if (lightsOn && s.audio && !s.speaker) warnings.push('No Bluetooth speaker is connected, so the Pi\'s sound isn\'t going anywhere. Turn the speaker on, or connect it under Settings.');
-  if (s.error) warnings.push(`The show stopped with an error: ${s.error}`);
-  $('warnings').textContent = warnings.join(' ');
+  const [lt, ls] = describe(L);
+  $('lights-title').textContent = lightsOn ? lt : s.other_shows.length ? s.other_shows.join(', ') : 'Off';
+  $('lights-sub').textContent = lightsOn ? ls : s.other_shows.length ? 'Started by hand, outside the panel' : (s.has_leds ? 'Preview something, then send it here.' : 'No lights on this computer.');
+  $('lights-stop').disabled = !lightsOn;
+  const lw = [];
+  if (!lightsOn && s.other_shows.length) lw.push(`${s.other_shows.join(', ')} was started by hand, so the panel can't show it. Sending something to the lights replaces it.`);
+  if (dark) lw.push(`It's outside the show window, so the lights stay dark until ${s.window[0]}. Turn off the schedule in Settings to play now.`);
+  if (lightsOn && L.audio && !s.speaker) lw.push('No Bluetooth speaker is connected, so the sound isn\'t going anywhere. Turn the speaker on, or connect it under Settings.');
+  if (L.error) lw.push(`The show on the lights stopped with an error: ${L.error}`);
+  $('lights-warnings').textContent = lw.join(' ');
 
-  const program = library && library.programs.find((p) => p.id === s.program);
-  $('now-title').textContent = s.program ? pretty(s.playing || s.animation || '') || (program ? program.name : '') : 'Nothing playing';
-  $('now-sub').textContent = s.audio ? `♪ ${s.audio.title}` : (program ? program.name : '');
+  const [pt, ps] = describe(P);
+  $('now-title').textContent = pt || 'Pick something to preview';
+  $('now-sub').textContent = ps;
+  $('preview-stop').disabled = !P.program;
+  const same = P.program && P.program === L.program && P.animation === L.animation && P.track === L.track;
+  $('send').disabled = !s.has_leds || !P.program || same;
+  $('send-note').textContent = !s.has_leds ? 'This computer has no lights, so it only previews.' : same ? 'This is on the lights.' : '';
+  $('preview-warnings').textContent = P.error ? `The preview stopped with an error: ${P.error}` : '';
 
   $('schedule').checked = s.schedule;
   $('window').textContent = `${s.window[0]} to ${s.window[1]}`;
@@ -361,10 +406,10 @@ function showSetting(key) {
 
 // ---- Shows and sounds ----
 
-function item(title, sub, on, onclick, right) {
+function item(title, sub, on, onclick, right, onLights) {
   const b = document.createElement('button');
   b.className = 'item' + (on ? ' on' : '');
-  b.innerHTML = `<span class="t"><div></div><div></div></span>${right ? `<span class="dur">${right}</span>` : ''}`;
+  b.innerHTML = `<span class="t"><div></div><div></div></span>${onLights ? '<span class="tag">on the lights</span>' : ''}${right ? `<span class="dur">${right}</span>` : ''}`;
   b.querySelector('.t div').textContent = title;
   b.querySelector('.t div + div').textContent = sub || '';
   b.onclick = onclick;
@@ -382,24 +427,27 @@ function renderLists() {
     return b;
   }));
   const program = library.programs.find((p) => p.id === tab);
-  const playingAll = state.program === tab && !state.animation && !state.track;
-  $('play-all').textContent = playingAll ? 'Playing the whole show' : 'Play the whole show';
-  $('play-all').onclick = () => api('/api/play', { program: tab });
+  const P = state.preview, L = state.lights;
+  const preview = (pick) => api('/api/play', { where: 'preview', ...pick });
+  $('play-all').textContent = P.program === tab && !P.animation && !P.track ? 'Previewing the whole show' : 'Preview the whole show';
+  $('play-all').onclick = () => preview({ program: tab });
   $('animations').replaceChildren(...program.animations.map((a) => item(
     a.title, a.doc,
-    state.program === tab && state.animation === a.name && !state.track,
-    () => api('/api/play', { program: tab, animation: a.name }))));
+    P.program === tab && P.animation === a.name && !P.track,
+    () => preview({ program: tab, animation: a.name }), '',
+    L.program === tab && L.animation === a.name && !L.track)));
 
   $('sounds-card').classList.toggle('hidden', tab !== 'halloween_audio');
-  const playing = state.audio && state.audio.track;
+  const playing = P.audio && P.audio.track;
+  const onLights = (t) => L.track === t.name || (L.audio && L.audio.track === t.name);
   $('songs').replaceChildren(...library.tracks.music.map((t) => item(
-    t.title, '', state.track === t.name || playing === t.name,
-    () => api('/api/play', { program: 'halloween_audio', animation: $('visual').value, track: t.name }),
-    fmt(t.duration))));
+    t.title, '', P.track === t.name || playing === t.name,
+    () => preview({ program: 'halloween_audio', animation: $('visual').value, track: t.name }),
+    fmt(t.duration), onLights(t))));
   $('ambience').replaceChildren(...library.tracks.ambience.map((t) => item(
-    t.title, t.scene ? `Lights: ${pretty(t.scene)}` : '', state.track === t.name || playing === t.name,
-    () => api('/api/play', { program: 'halloween_audio', track: t.name }),
-    fmt(t.duration))));
+    t.title, t.scene ? `Lights: ${pretty(t.scene)}` : '', P.track === t.name || playing === t.name,
+    () => preview({ program: 'halloween_audio', track: t.name }),
+    fmt(t.duration), onLights(t))));
   if (!library.tracks.music.length) $('songs').textContent = 'No songs yet.';
 }
 
@@ -426,12 +474,16 @@ async function loadLibrary() {
 
 // ---- Controls ----
 
-$('out-preview').onclick = () => api('/api/settings', { output: 'preview' });
-$('out-lights').onclick = () => {
-  const others = state && state.other_shows.length ? `\n\nThis stops ${state.other_shows.join(', ')}, which is running on the lights now.` : '';
-  if (confirm(`Play this on the real lights?${others}`)) api('/api/settings', { output: 'lights' });
+$('send').onclick = () => {
+  const P = state.preview;
+  const [title] = describe({ ...P, playing: null });
+  const replacing = state.lights.program ? describe(state.lights)[0] : state.other_shows.join(', ');
+  if (confirm(`Play ${title} on the real lights?${replacing ? `\n\nThis replaces ${replacing}.` : ''}`)) {
+    api('/api/play', { where: 'lights', program: P.program, animation: P.animation, track: P.track });
+  }
 };
-$('stop').onclick = () => api('/api/stop', {});
+$('lights-stop').onclick = () => { if (confirm('Turn the lights off?')) api('/api/stop', { where: 'lights' }); };
+$('preview-stop').onclick = () => api('/api/stop', { where: 'preview' });
 $('schedule').onchange = (e) => api('/api/settings', { schedule: e.target.checked });
 for (const key of ['brightness', 'volume', 'latency']) {
   $(key).oninput = () => showSetting(key);
@@ -475,6 +527,7 @@ $('bt-scan').onclick = async () => {
 };
 
 layout();
+showSoundButton();
 connect();
 loadLibrary();
 api('/api/bluetooth').then(renderBluetooth).catch(() => {});

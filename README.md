@@ -6,13 +6,14 @@
 
 `panel.py` is a web control panel. On the Pi it starts at boot (from the `pi` user's crontab) and runs at http://raspberrypi.local:8080, so you can open it from a laptop or phone on the home network.
 
-- Pick any show, or a single animation in it, and it plays in the browser preview: a loop of all 400 lights. Nothing touches the real lights.
-- **Send to lights** plays it on the strip instead, with sound on the Bluetooth speaker. Any show started by hand (`nohup python ...`) is stopped first. **Preview here** hands the strip back.
+- Pick any show, or a single animation in it, and it plays in the browser preview (a loop of all 400 lights) with its sound in the browser. Nothing touches the real lights.
+- **Send to lights** plays the preview's pick on the strip, with sound on the Bluetooth speaker. Any show started by hand (`nohup python ...`) is stopped first. The lights keep playing it while you preview something else; **Turn off** stops them.
 - On the lights, the schedule (on by default) keeps them dark outside the evening window.
-- In preview, **Sound here** plays the show's audio on the device you're looking at.
 - Settings has brightness, speaker volume, the Bluetooth speaker, and the preview's layout (where light 1 is and which way the strip runs).
 
-The panel remembers what it was doing in `panel_state.json`, so after a reboot it picks up where it left off. To run it by hand: `nohup python panel.py > panel.log 2>&1 &`. On a laptop, `python3 panel.py` previews only (it needs flask, numpy, and ffmpeg).
+The lights and the preview each run in their own `show.py` process, so switching one never disturbs the other, and a stuck show can always be stopped. The shows the panel offers are listed in `programs.py`.
+
+The panel remembers what's on the lights in `panel_state.json`, so after a reboot it picks up where it left off. To run it by hand: `nohup python panel.py > panel.log 2>&1 &`. On a laptop, `python3 panel.py` previews only (it needs flask, numpy, and ffmpeg).
 
 ## Running a show without the panel
 
@@ -44,7 +45,7 @@ if __name__ == "__main__":
     rotate([all_orange])
 ```
 
-Colors are `(R, G, B)`. To make a show appear in the control panel, add it to `PROGRAMS` in `panel.py`.
+Colors are `(R, G, B)`. To make a show appear in the control panel, add it to `PROGRAMS` in `programs.py`.
 
 ## Sound
 
@@ -61,7 +62,7 @@ On the lights, sound plays through PulseAudio on the paired Bluetooth speaker (a
 ## Layout
 
 - `halloween_audio.py`, `halloween26.py`, `xmas25.py`, `test_white.py`: current shows
-- `panel.py`, `web/`: the control panel
+- `panel.py`, `show.py`, `programs.py`, `web/`: the control panel
 - `lights.py`, `audio.py`: shared strip and sound code
 - `strip_map.py`: diagnostic that lights the strip in blocks of 100
 - `archive/`: past seasons' scripts. They're self-contained and still run with `python archive/<name>.py`, but assume 500 lights.
