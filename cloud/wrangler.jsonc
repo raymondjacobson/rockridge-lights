@@ -1,0 +1,17 @@
+{
+  // The lights' control panel on the internet (src/index.ts). The Pi connects out to it.
+  "name": "rockridge-lights",
+  // Ray's own account, the same one as frog-brain.
+  "account_id": "eeba4a6ca56a0d87af802270217c2a51",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "durable_objects": {
+    "bindings": [{ "name": "LightsLink", "class_name": "LightsLink" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["LightsLink"] }],
+  // The page is web/index.html, the same file the Pi serves at home.
+  "assets": { "directory": "../web" },
+  // Secrets (set by Ray with `npx wrangler secret put`, never in this file):
+  // LIGHTS_PASSWORD (the panel password), LIGHTS_DEVICE_TOKEN (scripts/pair-device.sh)
+  "observability": { "enabled": true }
+}

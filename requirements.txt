@@ -1,0 +1,1 @@
+websocket-client  # cloud.py: the panel's link to the Worker

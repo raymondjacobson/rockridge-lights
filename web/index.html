@@ -86,6 +86,9 @@
   .on-lights canvas { border-radius: 6px; }
   .on-lights .what b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .on-lights .what .sub { color: var(--muted); font-size: 13px; }
+  .login { max-width: 360px; margin: 40px auto; }
+  .login input { font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px; flex: 1; min-width: 0; }
+  #offline { margin: 0 0 14px; }
   .tag { font-size: 11px; color: var(--accent); border: 1px solid rgba(255, 122, 26, .5); border-radius: 99px; padding: 1px 7px; white-space: nowrap; }
 </style>
 </head>
@@ -95,7 +98,18 @@
   <span id="status" class="chip">Connecting…</span>
 </header>
 
-<div class="layout">
+<form id="login" class="card login hidden">
+  <h2>Log in</h2>
+  <div class="row">
+    <input type="password" id="password" autocomplete="current-password" placeholder="Panel password" required>
+    <button class="primary">Log in</button>
+  </div>
+  <p id="login-note" class="note"></p>
+</form>
+
+<div id="offline" class="warn hidden">The lights Pi isn't connected right now, so nothing here can change. It reconnects by itself once it's plugged in and on Wi-Fi.</div>
+
+<div id="main" class="layout hidden">
   <div class="stage-col">
     <div class="card">
       <div class="card-head">
@@ -211,12 +225,19 @@ let receivedAt = 0, tab = null, soundHere = recall('sound', 'on') !== 'off';
 function store(key, value) { try { localStorage.setItem(key, value); } catch (e) {} }
 function recall(key, fallback) { try { return localStorage.getItem(key) ?? fallback; } catch (e) { return fallback; } }
 
-async function api(path, body) {
+// Calls to the panel. On the internet (the rockridge-lights Worker) they can also need a login (401)
+// or find the Pi offline (503); `quiet` is for the background ones, which shouldn't pop up errors.
+async function api(path, body, { quiet = false } = {}) {
   const res = await fetch(path, body === undefined ? {} : {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) { alert(data.error || 'Something went wrong'); throw new Error(data.error); }
+  if (res.status === 401 && data.login) showLogin();
+  else if (res.status === 503 && data.offline) showOnline(false);
+  if (!res.ok) {
+    if (!quiet && !data.login) alert(data.error || 'Something went wrong');
+    throw new Error(data.error);
+  }
   return data;
 }
 
@@ -338,8 +359,11 @@ document.addEventListener('pointerdown', function unlock() {
 
 // ---- Live updates ----
 
+let events = null, online = true;
 function connect() {
-  const events = new EventSource('/api/stream');
+  if (events) return;
+  events = new EventSource('/api/stream');
+  events.addEventListener('link', (e) => showOnline(JSON.parse(e.data).online));
   events.addEventListener('state', (e) => {
     state = JSON.parse(e.data);
     receivedAt = performance.now();
@@ -353,6 +377,35 @@ function connect() {
     });
   }
   events.onerror = () => { $('status').textContent = 'Reconnecting…'; $('status').className = 'chip'; };
+}
+
+// ---- On the internet: logging in, and the Pi being offline ----
+
+function showLogin() {
+  $('login').classList.remove('hidden');
+  $('main').classList.add('hidden');
+  $('status').textContent = 'Locked';
+  $('password').focus();
+}
+
+$('login').onsubmit = async (e) => {
+  e.preventDefault();
+  $('login-note').textContent = '';
+  const res = await fetch('/api/login', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: $('password').value }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) { $('login-note').textContent = data.error || 'That didn\'t work.'; return; }
+  $('password').value = '';
+  $('login').classList.add('hidden');
+  start();
+};
+
+function showOnline(now) {
+  $('offline').classList.toggle('hidden', now);
+  if (!now) { $('status').textContent = 'Pi offline'; $('status').className = 'chip'; }
+  if (now && !online) { start(); refreshBluetooth(); }  // back: catch up on anything that changed
+  online = now;
 }
 
 function describe(p) {
@@ -455,7 +508,7 @@ function renderLists() {
 }
 
 async function loadLibrary() {
-  library = await api('/api/library');
+  library = await api('/api/library', undefined, { quiet: true });
   const visual = $('visual');
   if (!visual.options.length) {
     for (const v of library.visualizers) visual.add(new Option(pretty(v), v));
@@ -529,12 +582,26 @@ $('bt-scan').onclick = async () => {
   try { renderBluetooth(await api('/api/bluetooth/scan', {})); } finally { $('bt-scan').disabled = false; $('bt-note').textContent = ''; }
 };
 
+// Load the shows first: on the internet that's also how the page finds out it needs a login.
+async function start() {
+  try {
+    await loadLibrary();
+  } catch (e) {
+    if (!$('login').classList.contains('hidden')) return;
+    $('main').classList.remove('hidden');  // the Pi is offline; the live stream says when it's back
+    connect();
+    return;
+  }
+  $('main').classList.remove('hidden');
+  connect();
+}
+const refreshBluetooth = () => api('/api/bluetooth', undefined, { quiet: true }).then(renderBluetooth).catch(() => {});
+
 layout();
 showSoundButton();
-connect();
-loadLibrary();
-api('/api/bluetooth').then(renderBluetooth).catch(() => {});
-setInterval(() => api('/api/bluetooth').then(renderBluetooth).catch(() => {}), 30000);
+start();
+refreshBluetooth();
+setInterval(refreshBluetooth, 30000);
 requestAnimationFrame(tick);
 </script>
 </body>

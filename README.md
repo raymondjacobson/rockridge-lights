@@ -15,6 +15,31 @@ The lights and the preview each run in their own `show.py` process, so switching
 
 The panel remembers what's on the lights in `panel_state.json`, so after a reboot it picks up where it left off. To run it by hand: `nohup python panel.py > panel.log 2>&1 &`. On a laptop, `python3 panel.py` previews only (it needs flask, numpy, and ffmpeg).
 
+## On the internet
+
+The same panel is also at https://rockridge-lights.monophonic.workers.dev, behind a password, so it works from a phone anywhere. It's a Cloudflare Worker (`cloud/`, in Ray's own Cloudflare account, next to Frog's) that serves `web/index.html`; the panel on the Pi keeps a WebSocket open to it (`cloud.py`) and answers the page's calls over it. The Pi only ever connects out, so nothing at home is opened up.
+
+- The page streams the lights and the preview from the Pi only while someone has it open.
+- A sound is copied to the Worker the first time it's played there, so later plays don't wait on the Pi's upload.
+- If the Pi is off or offline, the page says so and catches up when it's back.
+
+Setting it up, once (Ray runs these from a checkout on the Mac):
+
+```
+./scripts/deploy-cloud.sh                                  # the Worker
+./scripts/deploy-pi.sh                                     # the code and websocket-client on the Pi
+(cd cloud && npx wrangler secret put LIGHTS_PASSWORD)      # the panel password
+./scripts/pair-device.sh                                   # a device token for the Pi; restarts the panel
+```
+
+The Pi keeps its address and token in `~/.config/rockridge-lights/cloud.env` (never in git). The panel logs the link as `cloud: ...` lines in `panel.log`; `npx wrangler tail rockridge-lights` (in `cloud/`) shows the Worker's side.
+
+To try it all on a laptop: put test values for `LIGHTS_PASSWORD` and `LIGHTS_DEVICE_TOKEN` in `cloud/.dev.vars`, run `npx wrangler dev` in `cloud/`, and start the panel with those two plus `LIGHTS_CLOUD_URL=ws://127.0.0.1:8787/device` in its environment.
+
+## Updating the Pi from another computer
+
+Commits can be made on the Pi itself or in a clone. `./scripts/deploy-pi.sh` fast-forwards the Pi to the clone's commits (it refuses if the Pi has commits the clone doesn't), and `./scripts/restart-panel.sh` restarts the panel on the new code (the lights blink for a moment).
+
 ## Running a show without the panel
 
 Each holiday is a standalone script in the repo root. Run it on the Pi with:
@@ -63,6 +88,8 @@ On the lights, sound plays through PulseAudio on the paired Bluetooth speaker (a
 
 - `halloween_audio.py`, `halloween26.py`, `xmas25.py`, `test_white.py`: current shows
 - `panel.py`, `show.py`, `programs.py`, `web/`: the control panel
+- `cloud.py`, `cloud/`: the panel on the internet (the Pi's side, and the Cloudflare Worker)
+- `scripts/`: deploying the Worker and the Pi, pairing them, restarting the panel
 - `lights.py`, `audio.py`: shared strip and sound code
 - `strip_map.py`: diagnostic that lights the strip in blocks of 100
 - `archive/`: past seasons' scripts. They're self-contained and still run with `python archive/<name>.py`, but assume 500 lights.

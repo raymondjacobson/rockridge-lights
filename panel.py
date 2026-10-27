@@ -10,6 +10,9 @@ playing it while you preview something else.
 Each of the two runs in its own process (show.py), so a stuck show can
 always be stopped. It also runs on a laptop (`python3 panel.py`, needs flask
 and numpy), where there's no strip and it only previews.
+
+Once it's set up (cloud.py), the same panel is also on the internet at
+https://rockridge-lights.monophonic.workers.dev, behind a password.
 """
 import json
 import os
@@ -26,6 +29,7 @@ from flask import Flask, Response, abort, jsonify, request, send_file
 from werkzeug.utils import secure_filename
 
 import audio
+import cloud
 import halloween_audio
 import lights
 from programs import PROGRAM, PROGRAMS
@@ -88,7 +92,7 @@ class Player:
             "error": self.error,
             "audio": a and {
                 **a,
-                "url": "/sounds/{}/{}.mp3".format(a["kind"], a["track"]),
+                "url": sound_url(a["kind"], a["track"]),
                 "elapsed": now - a["started"],
             },
         }
@@ -151,6 +155,16 @@ class Player:
             if process:
                 end_process(process)
             self.engine.bump()
+
+
+def sound_url(kind, name):
+    """Where browsers get a track. It names the version, so a copy kept elsewhere (the Worker's)
+    is replaced when the file changes."""
+    try:
+        version = int((audio.CACHE / "{}-{}.mp3".format(kind, name)).stat().st_mtime)
+    except OSError:
+        version = 0
+    return "/sounds/{}/{}.mp3?v={}".format(kind, name, version)
 
 
 def end_process(process):
@@ -377,35 +391,38 @@ def index():
     return send_file(str(ROOT / "web" / "index.html"))
 
 
+def live_events():
+    """The live stream as SSE text: the state whenever it changes, and both players' frames.
+    Each browser on /api/stream gets one, and so does the Worker while anyone watches there."""
+    engine.viewers += 1
+    players = {"lights": engine.lights, "preview": engine.preview}
+    sent = {where: -1 for where in players}
+    sent_version = -1
+    try:
+        while True:
+            with engine.changed:
+                engine.changed.wait_for(lambda: engine.version != sent_version or any(
+                    p.frame_seq != sent[w] for w, p in players.items()), timeout=10)
+                version = engine.version
+                frames = {w: (p.frame_seq, p.frame) for w, p in players.items() if p.frame_seq != sent[w]}
+            if version != sent_version:
+                sent_version = version
+                yield "event: state\ndata: {}\n\n".format(json.dumps(engine.snapshot()))
+            for where, (seq, frame) in frames.items():
+                sent[where] = seq
+                if frame:
+                    yield "event: {}\ndata: {}\n\n".format(where, frame)
+            if frames:
+                time.sleep(1 / FPS)
+            else:
+                yield ": still here\n\n"
+    finally:
+        engine.viewers -= 1
+
+
 @app.route("/api/stream")
 def stream():
-    def events():
-        engine.viewers += 1
-        players = {"lights": engine.lights, "preview": engine.preview}
-        sent = {where: -1 for where in players}
-        sent_version = -1
-        try:
-            while True:
-                with engine.changed:
-                    engine.changed.wait_for(lambda: engine.version != sent_version or any(
-                        p.frame_seq != sent[w] for w, p in players.items()), timeout=10)
-                    version = engine.version
-                    frames = {w: (p.frame_seq, p.frame) for w, p in players.items() if p.frame_seq != sent[w]}
-                if version != sent_version:
-                    sent_version = version
-                    yield "event: state\ndata: {}\n\n".format(json.dumps(engine.snapshot()))
-                for where, (seq, frame) in frames.items():
-                    sent[where] = seq
-                    if frame:
-                        yield "event: {}\ndata: {}\n\n".format(where, frame)
-                if frames:
-                    time.sleep(1 / FPS)
-                else:
-                    yield ": still here\n\n"
-        finally:
-            engine.viewers -= 1
-
-    return Response(events(), mimetype="text/event-stream",
+    return Response(live_events(), mimetype="text/event-stream",
                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
@@ -514,6 +531,7 @@ def shutdown():
 
 if __name__ == "__main__":
     engine.start()
+    cloud.start(app, live_events, engine.bump)
     try:
         app.run(host="0.0.0.0", port=PORT, threaded=True)
     finally:
