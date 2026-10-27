@@ -56,7 +56,7 @@
   .seg button.on.lights { background: var(--accent); color: #1a0d00; }
   .note { font-size: 13px; color: var(--muted); margin: 10px 0 0; }
   .warn { font-size: 13px; color: #ffc27a; background: rgba(255, 160, 50, .08); border: 1px solid rgba(255, 160, 50, .25); border-radius: 8px; padding: 8px 10px; margin-top: 10px; }
-  .warn:empty { display: none; }
+  .warn:empty, .note:empty { display: none; }
   .tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 12px; scrollbar-width: none; }
   .tabs button { white-space: nowrap; }
   .tabs button.on { border-color: var(--accent-2); color: #fff; background: rgba(155, 92, 255, .18); }
@@ -127,6 +127,7 @@
         <button id="send" class="primary">Send to lights</button>
         <span id="send-note" class="note" style="margin:0"></span>
       </div>
+      <p id="sound-note" class="note"></p>
       <div id="preview-warnings" class="warn"></div>
     </div>
   </div>
@@ -389,6 +390,8 @@ function render() {
   $('send').disabled = !s.has_leds || !P.program || same;
   $('send-note').textContent = !s.has_leds ? 'This computer has no lights, so it only previews.' : same ? 'This is on the lights.' : '';
   $('preview-warnings').textContent = P.error ? `The preview stopped with an error: ${P.error}` : '';
+  $('sound-note').textContent = P.program && P.program !== 'halloween_audio'
+    ? 'This show has no sound. Only “Halloween with sound” plays sounds and songs.' : '';
 
   $('schedule').checked = s.schedule;
   $('window').textContent = `${s.window[0]} to ${s.window[1]}`;
