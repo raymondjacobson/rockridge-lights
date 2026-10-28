@@ -36,6 +36,14 @@ The Pi keeps its address and token in `~/.config/rockridge-lights/cloud.env` (ne
 
 To try it all on a laptop: put test values for `LIGHTS_PASSWORD` and `LIGHTS_DEVICE_TOKEN` in `cloud/.dev.vars`, run `npx wrangler dev` in `cloud/`, and start the panel with those two plus `LIGHTS_CLOUD_URL=ws://127.0.0.1:8787/device` in its environment.
 
+## The Grim Reaper (Frog) and the lights
+
+Frog's Grim Reaper next door can change the lights when someone asks: "laugh" makes it cackle while the house flickers with each "ha", and "make the lights red, like blood" puts a look on for a minute. Its brain (the `frog-brain` Worker) reaches this Worker's `LightsControl` over a service binding, a private link with no URL, and the panel does the rest (`/api/frog` routes in `panel.py`):
+
+- **Looks**: any animation from Halloween reds, Christmas 2025 or Effects, or an effect made to order (`effects.py`: a kind, colors, a speed). A look lasts a minute, then the lights go back to what was last sent from the panel. The panel says "The Grim Reaper's pick" meanwhile.
+- **Moments** (`moments.py`): a few seconds layered over whatever is playing, without restarting it: the cackle, lightning, a pulse, a flash.
+- **Their own hours**: while the lights are off, asleep (outside the schedule) or started by hand, Frog's requests are refused and it says so. It can never turn them on.
+
 ## Updating the Pi from another computer
 
 Commits can be made on the Pi itself or in a clone. `./scripts/deploy-pi.sh` fast-forwards the Pi to the clone's commits (it refuses if the Pi has commits the clone doesn't), and `./scripts/restart-panel.sh` restarts the panel on the new code (the lights blink for a moment).
@@ -89,6 +97,7 @@ On the lights, sound plays through PulseAudio on the paired Bluetooth speaker (a
 - `halloween_audio.py`, `halloween26.py`, `xmas25.py`, `test_white.py`: current shows
 - `panel.py`, `show.py`, `programs.py`, `web/`: the control panel
 - `cloud.py`, `cloud/`: the panel on the internet (the Pi's side, and the Cloudflare Worker)
+- `effects.py`, `moments.py`: looks made to order and moments over a show, for Frog
 - `scripts/`: deploying the Worker and the Pi, pairing them, restarting the panel
 - `lights.py`, `audio.py`: shared strip and sound code
 - `strip_map.py`: diagnostic that lights the strip in blocks of 100

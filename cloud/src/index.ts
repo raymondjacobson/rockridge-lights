@@ -6,11 +6,54 @@
  * Everything else goes to the one LightsLink Durable Object (link.ts), which passes it to the
  * Pi over the WebSocket the Pi keeps open to /device. The panel's API and sounds need the
  * panel password (a 90-day cookie from /api/login); the Pi needs its device token.
+ *
+ * Frog's brain (frog-brain, the Grim Reaper next door) reaches the lights through LightsControl,
+ * over a service binding: a private Worker-to-Worker link with no URL of its own.
  */
+import { WorkerEntrypoint } from "cloudflare:workers";
+
 import { bearerMatches, passwordMatches, sessionCookie, sessionValid, sessionValue } from "./http";
 import { type Env, LightsLink } from "./link";
 
 export { LightsLink };
+
+/** The panel's answer: {ok: true, ...}, or {error, refused: true} when the lights are off or
+ * asleep, or {error, offline: true} when the Pi isn't connected. `status` is the HTTP status. */
+export type LightsAnswer = { status: number; ok?: boolean; error?: string; refused?: boolean; offline?: boolean } & Record<string, unknown>;
+
+/**
+ * For Frog's brain: put a look on the lights for a minute (an animation or an effect made to
+ * order), set off a moment over whatever's playing, go back to the show, or ask what's on and
+ * what there is. The panel's /api/frog routes (panel.py) do the work; the lights keep their own
+ * schedule and say no while they're off or asleep.
+ */
+export class LightsControl extends WorkerEntrypoint<Env> {
+  look(body: { program?: string; animation?: string; effect?: unknown; seconds?: number }): Promise<LightsAnswer> {
+    return this.#call("POST", "/api/frog/look", body);
+  }
+
+  moment(body: { kind: string; colors?: string[]; seconds?: number; envelope?: number[] }): Promise<LightsAnswer> {
+    return this.#call("POST", "/api/frog/moment", body);
+  }
+
+  back(): Promise<LightsAnswer> {
+    return this.#call("POST", "/api/frog/back", {});
+  }
+
+  status(): Promise<LightsAnswer> {
+    return this.#call("GET", "/api/frog");
+  }
+
+  async #call(method: string, path: string, body?: unknown): Promise<LightsAnswer> {
+    const link = this.env.LightsLink.get(this.env.LightsLink.idFromName("home"));
+    const response = await link.fetch(new Request(`https://lights.internal${path}`, {
+      method,
+      ...(body === undefined ? {} : { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
+    }));
+    const data = await response.json<Record<string, unknown>>().catch(() => ({ error: `the panel answered ${response.status}` }));
+    return { ...data, status: response.status };
+  }
+}
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {

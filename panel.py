@@ -30,8 +30,10 @@ from werkzeug.utils import secure_filename
 
 import audio
 import cloud
+import effects
 import halloween_audio
 import lights
+import moments
 from programs import PROGRAM, PROGRAMS
 
 ROOT = Path(__file__).resolve().parent
@@ -39,6 +41,8 @@ STATE_FILE = ROOT / "panel_state.json"
 PORT = 8080
 FPS = 30
 PREVIEW_IDLE_SECONDS = 120  # stop the preview this long after the last browser leaves
+FROG_SECONDS = 60  # a look Frog picks stays this long, then the lights go back to what was sent
+FROG_PROGRAMS = ("halloween26", "effects", "xmas25")  # the shows Frog can pick from (no sound)
 
 DEFAULT_STATE = {
     "lights": None,      # what's on the lights: {"program", "animation", "track"}, or None
@@ -194,6 +198,8 @@ class Engine:
         self.speaker = None
         self.lights = Player(self, on_lights=True)
         self.preview = Player(self, on_lights=False)
+        self.frog = None  # a look Frog put on the lights for now: {"pick", "until"}
+        self.frog_timer = None
 
     def bump(self):
         with self.changed:
@@ -210,6 +216,7 @@ class Engine:
             "other_shows": [name for _, name in self.other_shows],
             "speaker": self.speaker,
             "show_time": lights.is_show_time(),
+            "frog": self.frog and {"seconds_left": max(0, self.frog["until"] - time.time())},
             "window": [lights.show_start(today).strftime("%-I:%M %p"),
                        lights.show_end(today).strftime("%-I:%M %p")],
         }
@@ -227,8 +234,11 @@ class Engine:
         else:
             self.preview.play(pick)
 
-    def start_lights(self):
-        pick = self.state["lights"]
+    def start_lights(self, pick=None):
+        """Play `pick` on the lights for now, or else what was last sent to them."""
+        if pick is None:
+            pick = self.state["lights"]
+            self.end_frog_look()
         with self.lights.lock:
             self.lights.stop()
             if pick:
@@ -237,6 +247,84 @@ class Engine:
                     stop_process(pid)
             self.lights.play(pick, schedule=self.state["schedule"],
                              brightness=self.state["brightness"], latency=self.state["latency"])
+
+    # Frog (the Grim Reaper next door, through the Worker) can put a look on the lights for a
+    # minute and set off moments, but only while they're on: they keep their own schedule.
+
+    def frog_refusal(self):
+        """Why Frog can't change the lights right now, or None if it can."""
+        if lights.neopixel is None:
+            return "there are no lights on this computer"
+        if not self.state["lights"] or self.lights.process is None:
+            return "the lights are off"
+        if self.state["schedule"] and not lights.is_show_time():
+            return "the lights are asleep until {}".format(lights.next_show_start().strftime("%-I:%M %p"))
+        return None
+
+    def frog_look(self, body):
+        refusal = self.frog_refusal()
+        if refusal:
+            raise Refused(refusal)
+        if body.get("effect"):
+            pick = {"program": "effects", "animation": None, "track": None, "effect": effects.check(body["effect"])}
+        else:
+            program, animation = body.get("program"), body.get("animation")
+            if program not in FROG_PROGRAMS or animation not in {a.__name__ for a in PROGRAM[program]["animations"]}:
+                raise ValueError("no animation {}/{}".format(program, animation))
+            pick = {"program": program, "animation": animation, "track": None}
+        seconds = min(600.0, max(10.0, float(body.get("seconds", FROG_SECONDS))))
+        with self.lights.lock:
+            self.start_lights(pick)
+            self.end_frog_look()
+            look = self.frog = {"pick": pick, "until": time.time() + seconds}
+            self.frog_timer = threading.Timer(seconds, self.frog_look_over, args=(look,))
+            self.frog_timer.daemon = True
+            self.frog_timer.start()
+        print("frog: {} for {:.0f}s".format(pick.get("effect") or pick["animation"], seconds), flush=True)
+        self.bump()
+        return {"seconds": seconds}
+
+    def frog_look_over(self, look):
+        with self.lights.lock:
+            if self.frog is look:
+                print("frog: look over, back to", (self.state["lights"] or {}).get("program"), flush=True)
+                self.start_lights()
+
+    def end_frog_look(self):
+        if self.frog_timer:
+            self.frog_timer.cancel()
+        self.frog = self.frog_timer = None
+
+    def frog_back(self):
+        """Back to what was sent to the lights, now."""
+        with self.lights.lock:
+            was = self.frog is not None
+            if was:
+                self.start_lights()
+        return was
+
+    def frog_moment(self, spec):
+        refusal = self.frog_refusal()
+        if refusal:
+            raise Refused(refusal)
+        if not isinstance(spec, dict) or spec.get("kind") not in moments.KINDS:
+            raise ValueError("a moment is one of: " + ", ".join(moments.KINDS))
+        for c in spec.get("colors") or []:
+            effects.color(c)
+        self.lights.tell(moment=spec)
+
+    def frog_status(self):
+        lights_pick = self.lights.snapshot()
+        program = PROGRAM.get(lights_pick["program"] or "")
+        catalog = [{"program": p, "animation": a.__name__, "about": doc(a)}
+                   for p in FROG_PROGRAMS for a in PROGRAM[p]["animations"]]
+        return {
+            "refusal": self.frog_refusal(),
+            "playing": program and {"show": program["name"], "animation": lights_pick["playing"],
+                                    "effect": lights_pick.get("effect")},
+            "frog_look": self.frog and {"seconds_left": round(self.frog["until"] - time.time())},
+            "catalog": catalog, "effects": effects.KINDS, "moments": moments.KINDS,
+        }
 
     def settings(self, changes):
         if "brightness" in changes:
@@ -381,9 +469,18 @@ app.config["MAX_CONTENT_LENGTH"] = 300 * 1024 * 1024
 engine = Engine()
 
 
+class Refused(Exception):
+    """Frog asked for something the lights won't do now (they're off or asleep)."""
+
+
 @app.errorhandler(ValueError)
 def bad_request(e):
     return jsonify(error=str(e)), 400
+
+
+@app.errorhandler(Refused)
+def refused(e):
+    return jsonify(error=str(e), refused=True), 409
 
 
 @app.route("/")
@@ -499,6 +596,27 @@ def upload():
     file.save(str(folder / name))
     threading.Thread(target=prepare_tracks, daemon=True).start()
     return jsonify(ok=True, name=Path(name).stem)
+
+
+@app.route("/api/frog")
+def frog_status():
+    return jsonify(engine.frog_status())
+
+
+@app.route("/api/frog/look", methods=["POST"])
+def frog_look():
+    return jsonify(ok=True, **engine.frog_look(request.get_json(force=True)))
+
+
+@app.route("/api/frog/moment", methods=["POST"])
+def frog_moment():
+    engine.frog_moment(request.get_json(force=True))
+    return jsonify(ok=True)
+
+
+@app.route("/api/frog/back", methods=["POST"])
+def frog_back():
+    return jsonify(ok=True, was_frogs=engine.frog_back())
 
 
 @app.route("/api/bluetooth")

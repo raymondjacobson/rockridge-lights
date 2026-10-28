@@ -2,8 +2,10 @@
 
 A pick is a program id, optionally one animation in it, and for the sound
 show optionally one track (with `animation` as its visualizer for songs).
+For "effects", a pick can instead carry an `effect` made to order (effects.py).
 """
 import audio
+import effects
 import halloween26
 import halloween_audio
 import test_white
@@ -16,14 +18,17 @@ PROGRAMS = [
     {"id": "halloween26", "name": "Halloween reds", "seconds": halloween26.PATTERN_SECONDS,
      "play_all": halloween26.PATTERNS, "animations": halloween26.PATTERNS + [halloween26.red_sweep]},
     {"id": "xmas25", "name": "Christmas 2025", "seconds": 30, "animations": xmas25.ANIMATIONS},
+    {"id": "effects", "name": "Effects", "seconds": effects.SECONDS, "animations": effects.PRESETS},
     {"id": "tests", "name": "Tests", "seconds": 30, "animations": [test_white.white_circle]},
 ]
 PROGRAM = {p["id"]: p for p in PROGRAMS}
 
 
-def build(program, animation=None, track=None):
+def build(program, animation=None, track=None, effect=None):
     """(animations, seconds, shuffle) to hand to lights.rotate() for a pick."""
     p = PROGRAM[program]
+    if effect:
+        return [effects.animation(effect)], effects.SECONDS, False
     animations = p.get("play_all", p["animations"])
     if animation:
         animations = [a for a in p["animations"] if a.__name__ == animation][:1]

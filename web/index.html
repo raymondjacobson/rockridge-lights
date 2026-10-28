@@ -426,7 +426,8 @@ function render() {
 
   const [lt, ls] = describe(L);
   $('lights-title').textContent = lightsOn ? lt : s.other_shows.length ? s.other_shows.join(', ') : 'Off';
-  $('lights-sub').textContent = lightsOn ? ls : s.other_shows.length ? 'Started by hand, outside the panel' : (s.has_leds ? 'Preview something, then send it here.' : 'No lights on this computer.');
+  const frogSays = s.frog ? `The Grim Reaper's pick, for ${Math.ceil(s.frog.seconds_left)} more seconds` : '';
+  $('lights-sub').textContent = lightsOn ? (frogSays || ls) : s.other_shows.length ? 'Started by hand, outside the panel' : (s.has_leds ? 'Preview something, then send it here.' : 'No lights on this computer.');
   $('lights-stop').disabled = !lightsOn;
   const lw = [];
   if (!lightsOn && s.other_shows.length) lw.push(`${s.other_shows.join(', ')} was started by hand, so the panel can't show it. Sending something to the lights replaces it.`);

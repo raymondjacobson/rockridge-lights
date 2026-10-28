@@ -6,7 +6,8 @@ With "lights" it drives the real strip and plays sound on the Pi's speaker;
 otherwise it only previews, leaving the sound to the browser. It reports
 what it's doing on stdout as JSON lines (frames, the animation playing, the
 track) and takes setting changes ({"brightness": 0.5}, {"latency": 0.3}) on
-stdin. It stops when it's killed or when the panel goes away.
+stdin, and moments to layer over the show ({"moment": {"kind": "lightning"}},
+see moments.py). It stops when it's killed or when the panel goes away.
 """
 import base64
 import json
@@ -19,6 +20,7 @@ import traceback
 
 import audio
 import lights
+import moments
 import programs
 
 FPS = 30
@@ -64,6 +66,11 @@ def main():
                 lights.pixels.brightness = float(changes["brightness"])
             if "latency" in changes:
                 audio.latency["pi"] = float(changes["latency"])
+            if "moment" in changes:
+                try:
+                    moments.start(changes["moment"])
+                except (ValueError, TypeError) as e:
+                    print("couldn't play moment", changes["moment"], e, flush=True)
         os.kill(os.getpid(), signal.SIGTERM)  # the panel is gone
     threading.Thread(target=listen, daemon=True).start()
 
@@ -75,7 +82,8 @@ def main():
         return run
 
     try:
-        animations, seconds, shuffle = programs.build(pick["program"], pick.get("animation"), pick.get("track"))
+        animations, seconds, shuffle = programs.build(pick["program"], pick.get("animation"), pick.get("track"),
+                                                           pick.get("effect"))
         lights.rotate([announced(a) for a in animations], seconds=seconds, shuffle=shuffle,
                       scheduled=on_lights and pick.get("schedule", True))
     except Exception as e:

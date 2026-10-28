@@ -57,7 +57,8 @@ class Strip:
     """The frame the shows draw into: set `pixels[i] = (r, g, b)`, then `pixels.show()`.
 
     show() sends the frame to the LEDs while `to_leds` is on, and to every
-    function in `listeners` (the control panel's preview).
+    function in `listeners` (the control panel's preview). An `overlay`
+    (moments.py) changes each frame on its way out until it returns None.
     """
 
     def __init__(self, n):
@@ -67,6 +68,8 @@ class Strip:
         self.to_leds = True
         self.listeners = []
         self.interrupt = threading.Event()
+        self.overlay = None
+        self._lock = threading.Lock()
         self._leds = None
 
     def __len__(self):
@@ -91,14 +94,23 @@ class Strip:
 
     def send(self):
         """Like show(), but also works while the show is being stopped."""
-        if self.to_leds:
-            leds = self._open_leds()
-            if leds.brightness != self.brightness:
-                leds.brightness = self.brightness
-            leds[:] = self.buffer
-            leds.show()
-        for listener in self.listeners:
-            listener(self.buffer)
+        with self._lock:
+            frame = self.buffer
+            overlay = self.overlay
+            if overlay is not None:
+                frame = overlay(frame)
+                if frame is None:  # the moment is over
+                    if self.overlay is overlay:
+                        self.overlay = None
+                    frame = self.buffer
+            if self.to_leds:
+                leds = self._open_leds()
+                if leds.brightness != self.brightness:
+                    leds.brightness = self.brightness
+                leds[:] = frame
+                leds.show()
+            for listener in self.listeners:
+                listener(frame)
 
     def _open_leds(self):
         if self._leds is None:
