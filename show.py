@@ -76,8 +76,14 @@ def main():
         os.kill(os.getpid(), signal.SIGTERM)  # the panel is gone
     threading.Thread(target=listen, daemon=True).start()
 
+    started = []
+
     def announced(animation):
         def run():
+            if pick.get("once") and started:  # played: dark until the panel moves on
+                lights.clear()
+                threading.Event().wait()
+            started.append(True)
             report(playing=animation.__name__)
             animation()
         run.__name__ = animation.__name__

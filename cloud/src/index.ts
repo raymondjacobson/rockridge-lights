@@ -28,7 +28,7 @@ export type LightsAnswer = { status: number; ok?: boolean; error?: string; refus
  * schedule and say no while they're off or asleep.
  */
 export class LightsControl extends WorkerEntrypoint<Env> {
-  look(body: { program?: string; animation?: string; effect?: unknown; seconds?: number }): Promise<LightsAnswer> {
+  look(body: { program?: string; animation?: string; effect?: unknown; seconds?: number; song?: string }): Promise<LightsAnswer> {
     return this.#call("POST", "/api/frog/look", body);
   }
 

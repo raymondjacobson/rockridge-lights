@@ -43,6 +43,7 @@ FPS = 30
 PREVIEW_IDLE_SECONDS = 120  # stop the preview this long after the last browser leaves
 FROG_SECONDS = 60  # a look Frog picks stays this long, then the lights go back to what was sent
 FROG_PROGRAMS = ("halloween26", "effects", "xmas25")  # the shows Frog can pick from (no sound)
+FROG_SONG_MARGIN = 5  # seconds past a song's length before the show comes back: starting up, and its fade
 
 DEFAULT_STATE = {
     # what's on the lights: {"program", "animation", "track"}, or None. A new Pi starts on the full show.
@@ -268,20 +269,29 @@ class Engine:
             raise Refused(refusal)
         if body.get("effect"):
             pick = {"program": "effects", "animation": None, "track": None, "effect": effects.check(body["effect"])}
+        elif body.get("song"):
+            song = next((t for t in audio.library("music") if t.name == body["song"]), None)
+            if song is None:
+                raise ValueError("no song {}".format(body["song"]))
+            seconds = song.duration + FROG_SONG_MARGIN
+            if self.state["schedule"] and not lights.is_show_time(seconds):
+                raise Refused("that song wouldn't finish before the lights go to sleep")
+            pick = {"program": "halloween_audio", "animation": None, "track": song.name, "once": True}
         else:
             program, animation = body.get("program"), body.get("animation")
             if program not in FROG_PROGRAMS or animation not in {a.__name__ for a in PROGRAM[program]["animations"]}:
                 raise ValueError("no animation {}/{}".format(program, animation))
             pick = {"program": program, "animation": animation, "track": None}
-        seconds = min(600.0, max(10.0, float(body.get("seconds", FROG_SECONDS))))
+        if not body.get("song"):
+            seconds = min(600.0, max(10.0, float(body.get("seconds", FROG_SECONDS))))
         with self.lights.lock:
             self.start_lights(pick)
             self.end_frog_look()
-            look = self.frog = {"pick": pick, "until": time.time() + seconds}
+            look = self.frog = {"pick": pick, "until": time.time() + seconds, "song": pick.get("once") and pick["track"]}
             self.frog_timer = threading.Timer(seconds, self.frog_look_over, args=(look,))
             self.frog_timer.daemon = True
             self.frog_timer.start()
-        print("frog: {} for {:.0f}s".format(pick.get("effect") or pick["animation"], seconds), flush=True)
+        print("frog: {} for {:.0f}s".format(pick.get("effect") or pick["animation"] or pick["track"], seconds), flush=True)
         self.bump()
         return {"seconds": seconds}
 
@@ -323,8 +333,9 @@ class Engine:
             "refusal": self.frog_refusal(),
             "playing": program and {"show": program["name"], "animation": lights_pick["playing"],
                                     "effect": lights_pick.get("effect")},
-            "frog_look": self.frog and {"seconds_left": round(self.frog["until"] - time.time())},
+            "frog_look": self.frog and {"seconds_left": round(self.frog["until"] - time.time()), "song": self.frog["song"]},
             "catalog": catalog, "effects": effects.KINDS, "moments": moments.KINDS,
+            "songs": [{"name": t.name, "title": t.title, "seconds": round(t.duration)} for t in audio.library("music")],
         }
 
     def settings(self, changes):
