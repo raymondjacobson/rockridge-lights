@@ -19,6 +19,7 @@ import time
 import traceback
 
 import audio
+import halloween_audio
 import lights
 import moments
 import programs
@@ -58,6 +59,7 @@ def main():
             "started": playback.started, "duration": playback.track.duration, "output": playback.output,
         })
     audio.listeners.append(on_audio)
+    halloween_audio.on_scene = lambda name: report(playing=name)
 
     def listen():
         for line in sys.stdin:

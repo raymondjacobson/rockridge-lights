@@ -82,12 +82,12 @@ Colors are `(R, G, B)`. To make a show appear in the control panel, add it to `P
 
 ## Sound
 
-`halloween_audio.py` is the Halloween show with sound. It plays soundscapes from `sounds/ambience/` (owls, thunderstorms, wolves, ravens, creaking doors, wind, bells), each with its own lights, and after every few it plays a song from `sounds/music/` with one of the music visualizers.
+`halloween_audio.py` is the Halloween show with sound, and what a new Pi plays by default. It plays soundscapes from `sounds/ambience/`, each with its own lights, changing about every minute (`SCENE_SECONDS`). After every three it plays a Halloween reds pattern with no sound, and after two of those a whole song from `sounds/music/` with one of the music visualizers. Picking one soundscape in the panel still plays its whole track.
 
 `audio.py` analyzes each track once and caches the results in `sounds/.cache/`: loudness, eight frequency bands, and onsets. Animations can then react to the music, and even see what's coming. The thunderstorm, for example, flashes lightning just before each thunderclap.
 
-- Tracks are matched to scenes by words in their file names: `owl`, `thunder`/`storm`, `wolf`, `crow`/`raven`, `door`/`creak`, `wind`, `bell`. Other files get a generic glow.
-- Add songs through the panel's upload form, or copy them into `sounds/music/`.
+- Tracks are matched to scenes by words in their file names (`KEYWORDS` in `halloween_audio.py`): `owl`, `thunder`/`storm`, `wolf`, `crow`/`raven`, `door`/`creak`, `wind`, `bell`, `witch`, `monster`, `heartbeat`, `bats`, `foghorn`, and so on. Other files get a generic glow.
+- Add songs through the panel's upload form, or copy them into `sounds/music/`. A song whose file name starts with `thriller` or `monster` comes up more often (`FAVORITE_SONGS`).
 - The audio files themselves aren't in git (they're large, and uploaded songs may be copyrighted). `sounds/credits.json` lists where each bundled one came from and its license.
 
 On the lights, sound plays through PulseAudio on the paired Bluetooth speaker (a WONDERBOOM 2). While the panel is on the lights, it reconnects the speaker when it drops. Bluetooth plays a little late; the panel's "Sound delay" setting shifts the lights to match.

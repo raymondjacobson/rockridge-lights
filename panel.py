@@ -45,7 +45,8 @@ FROG_SECONDS = 60  # a look Frog picks stays this long, then the lights go back 
 FROG_PROGRAMS = ("halloween26", "effects", "xmas25")  # the shows Frog can pick from (no sound)
 
 DEFAULT_STATE = {
-    "lights": None,      # what's on the lights: {"program", "animation", "track"}, or None
+    # what's on the lights: {"program", "animation", "track"}, or None. A new Pi starts on the full show.
+    "lights": {"program": "halloween_audio", "animation": None, "track": None} if lights.neopixel else None,
     "schedule": True,    # on the lights, only play between sunset and OFF_HOUR
     "brightness": lights.BRIGHTNESS,
     "volume": audio.volume,

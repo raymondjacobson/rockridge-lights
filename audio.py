@@ -33,6 +33,7 @@ SAMPLE_RATE = 24000
 HOP = 400  # samples between feature frames: 60 per second
 RATE = SAMPLE_RATE / HOP
 WINDOW = 2048
+FADE_SECONDS = 3
 BAND_EDGES = [30, 80, 160, 320, 640, 1300, 2600, 5200, 11000]  # Hz, eight bands
 
 output = "pi"
@@ -247,7 +248,7 @@ current = None  # the Playback in progress, if any
 class Playback:
     """A track that is playing. `t` is where the listener is in it, in seconds."""
 
-    def __init__(self, track):
+    def __init__(self, track, fade_at=None):
         self.track = track
         self.features = track.features
         self.output = output
@@ -258,8 +259,9 @@ class Playback:
             if sink:
                 env["PULSE_SINK"] = sink
             env["SDL_AUDIODRIVER"] = "pulseaudio"
+            fade = ["-af", "afade=t=out:st={:.1f}:d={}".format(fade_at, FADE_SECONDS)] if fade_at else []
             self.process = subprocess.Popen(
-                ["ffplay", "-nodisp", "-autoexit", "-loglevel", "error", str(track.path)],
+                ["ffplay", "-nodisp", "-autoexit", "-loglevel", "error"] + fade + [str(track.path)],
                 env=env, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
         self.started = time.time()
         self._last = {}
@@ -325,13 +327,16 @@ class Playback:
             listener(None)
 
 
-def play(track):
-    """Start `track` (a Track or name) and return its Playback; use it in a with block."""
+def play(track, fade_at=None):
+    """Start `track` (a Track or name) and return its Playback; use it in a with block.
+
+    With `fade_at`, its sound fades out from that many seconds in, for a scene that ends early.
+    """
     global current
     if isinstance(track, str):
         track = find(track)
     track.features  # analyze before the clock starts
-    playback = Playback(track)
+    playback = Playback(track, fade_at)
     with _lock:
         current = playback
     for listener in listeners:

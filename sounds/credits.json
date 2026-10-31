@@ -174,5 +174,197 @@
     "license": "CC BY 4.0",
     "source": "https://commons.wikimedia.org/wiki/File:Bach,_Toccata_und_Fuge_d-moll_BWV_565,_Norbert_Schenk.mp3",
     "duration": 464.0
+  },
+  {
+    "file": "ambience/witch_laugh.ogg",
+    "title": "Evil laughter",
+    "author": "stilgar",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Evil_laughter.ogg",
+    "duration": 16.6
+  },
+  {
+    "file": "ambience/monster_growls.ogg",
+    "title": "Monster growls",
+    "author": "stilgar",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Monster_growls.ogg",
+    "duration": 53.7
+  },
+  {
+    "file": "ambience/heartbeat_slow.wav",
+    "title": "Athletic bradycardia wav",
+    "author": "Athletearrhythmia",
+    "license": "CC0",
+    "source": "https://commons.wikimedia.org/wiki/File:Athletic_bradycardia_wav.wav",
+    "duration": 20.1
+  },
+  {
+    "file": "ambience/heavy_breathing.ogg",
+    "title": "Heavy breathing 3",
+    "author": "ezwa",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Heavy_breathing_3.ogg",
+    "duration": 59.8
+  },
+  {
+    "file": "ambience/clock_ticking.ogg",
+    "title": "Grandfather Clock Ticking",
+    "author": "Jud McCranie",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Grandfather_Clock_Ticking.ogg",
+    "duration": 60.9
+  },
+  {
+    "file": "ambience/clock_strikes.ogg",
+    "title": "Cathedral Fribourg stroke 9 o clock 01",
+    "author": "Martin Thurnherr",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Cathedral_Fribourg_stroke_9_o_clock_01.ogg",
+    "duration": 42.4
+  },
+  {
+    "file": "ambience/bats_echolocation.ogg",
+    "title": "Yannick Dauby - Bats echolocation (CC by)",
+    "author": "?",
+    "license": "CC BY 2.5",
+    "source": "https://commons.wikimedia.org/wiki/File:Yannick_Dauby_-_Bats_echolocation_(CC_by).ogg",
+    "duration": 55.4
+  },
+  {
+    "file": "ambience/crickets_night.ogg",
+    "title": "Ringing cricket winding down",
+    "author": "Jidanni",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Ringing_cricket_winding_down.ogg",
+    "duration": 55.8
+  },
+  {
+    "file": "ambience/frogs_night_chorus.ogg",
+    "title": "Frogs croak calling chorus at night",
+    "author": "JogiAsad",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Frogs_croak_calling_chorus_at_night.ogg",
+    "duration": 119.6
+  },
+  {
+    "file": "ambience/rattlesnake.ogg",
+    "title": "Rattlesnake",
+    "author": "?",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Rattlesnake.ogg",
+    "duration": 15.1
+  },
+  {
+    "file": "ambience/bonfire_crackling.ogg",
+    "title": "Bones breaking wood fire ice crackling",
+    "author": "stephan",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Bones_breaking_wood_fire_ice_crackling.ogg",
+    "duration": 74.1
+  },
+  {
+    "file": "ambience/foghorn_harbor.ogg",
+    "title": "Fog signal Bremerhaven",
+    "author": "Tvabutzku1234",
+    "license": "CC0",
+    "source": "https://commons.wikimedia.org/wiki/File:Fog_signal_Bremerhaven.ogg",
+    "duration": 128.1
+  },
+  {
+    "file": "ambience/cave_water_drips.flac",
+    "title": "Water drips in Treak Cliff Cavern, Derbyshire",
+    "author": "Andy Mabbett",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Water_drips_in_Treak_Cliff_Cavern,_Derbyshire.flac",
+    "duration": 83.6
+  },
+  {
+    "file": "ambience/music_box_notes.ogg",
+    "title": "Music box notes 1",
+    "author": "Luisalvaz",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Music_box_notes_1.ogg",
+    "duration": 7.1
+  },
+  {
+    "file": "ambience/zombie_guttural.ogg",
+    "title": "Zombie-Gutteral-Sounds",
+    "author": "Wowsuchthings",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Zombie-Gutteral-Sounds.ogg",
+    "duration": 17.1
+  },
+  {
+    "file": "ambience/footsteps_scream_growl.wav",
+    "title": "Creepy footsteps and screaming and growl",
+    "author": "Edisonisthebest",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Creepy_footsteps_and_screaming_and_growl.wav",
+    "duration": 17.2
+  },
+  {
+    "file": "ambience/saturn_radio_signal.wav",
+    "title": "Eerie Sounds of Saturn’s Radio Emissions (PIA07966)",
+    "author": "NASA/JPL/University of Iowa",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Eerie_Sounds_of_Saturn%E2%80%99s_Radio_Emissions_(PIA07966).wav",
+    "duration": 73.5
+  },
+  {
+    "file": "ambience/ghostly_voices.mp3",
+    "title": "ERH - ghostly voices (cc-by) (freesound)",
+    "author": "ERH",
+    "license": "CC BY 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File:ERH_-_ghostly_voices_(cc-by)_(freesound).mp3",
+    "duration": 58.5
+  },
+  {
+    "file": "ambience/banshee_screech.mp3",
+    "title": "Tyto alba - Western Barn Owl XC592539",
+    "author": "Jens Loose",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Tyto_alba_-_Western_Barn_Owl_XC592539.mp3",
+    "duration": 65.1
+  },
+  {
+    "file": "ambience/beehive_swarm.mp3",
+    "title": "Community orchard behive 2020-05-08 1412",
+    "author": "Robert EA Harvey",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Community_orchard_behive_2020-05-08_1412.mp3",
+    "duration": 68.6
+  },
+  {
+    "file": "music/halloween_ghost_party.opus",
+    "title": "Loyalty Freak Music - 12 - Halloween Ghost Party",
+    "author": "Loyalty Freak Music",
+    "license": "CC0",
+    "source": "https://commons.wikimedia.org/wiki/File:Loyalty_Freak_Music_-_12_-_Halloween_Ghost_Party.opus",
+    "duration": 166.2
+  },
+  {
+    "file": "music/halloween_1911.ogg",
+    "title": "Arthur Manlowe - Halloween (1911)",
+    "author": "Gnissah",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Arthur_Manlowe_-_Halloween_(1911).ogg",
+    "duration": 166.9
+  },
+  {
+    "file": "music/zombie_hoodoo.mp3",
+    "title": "Zombie Hoodoo (ISRC USUAN1100004)",
+    "author": "Kevin MacLeod",
+    "license": "CC BY 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Zombie_Hoodoo_(ISRC_USUAN1100004).mp3",
+    "duration": 86.8
+  },
+  {
+    "file": "music/ghost_dance.oga",
+    "title": "Ghost Dance (MacLeod, Kevin) (ISRC USUAN1100573)",
+    "author": "Kevin MacLeod 1821 S Ridge Rd Green Bay WI, 54304 USA",
+    "license": "CC BY 3.0 us",
+    "source": "https://commons.wikimedia.org/wiki/File:Ghost_Dance_(MacLeod,_Kevin)_(ISRC_USUAN1100573).oga",
+    "duration": 73.3
   }
 ]
