@@ -226,7 +226,7 @@
   {
     "file": "ambience/bats_echolocation.ogg",
     "title": "Yannick Dauby - Bats echolocation (CC by)",
-    "author": "?",
+    "author": "Yannick Dauby",
     "license": "CC BY 2.5",
     "source": "https://commons.wikimedia.org/wiki/File:Yannick_Dauby_-_Bats_echolocation_(CC_by).ogg",
     "duration": 55.4
@@ -250,7 +250,7 @@
   {
     "file": "ambience/rattlesnake.ogg",
     "title": "Rattlesnake",
-    "author": "?",
+    "author": "Unknown (Wikimedia Commons)",
     "license": "Public domain",
     "source": "https://commons.wikimedia.org/wiki/File:Rattlesnake.ogg",
     "duration": 15.1
@@ -362,8 +362,8 @@
   {
     "file": "music/ghost_dance.oga",
     "title": "Ghost Dance (MacLeod, Kevin) (ISRC USUAN1100573)",
-    "author": "Kevin MacLeod 1821 S Ridge Rd Green Bay WI, 54304 USA",
-    "license": "CC BY 3.0 us",
+    "author": "Kevin MacLeod",
+    "license": "CC BY 3.0",
     "source": "https://commons.wikimedia.org/wiki/File:Ghost_Dance_(MacLeod,_Kevin)_(ISRC_USUAN1100573).oga",
     "duration": 73.3
   }
