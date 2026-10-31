@@ -1,7 +1,7 @@
 """Halloween with sound: spooky soundscapes, now and then Halloween reds, and every so often a song.
 
 Each soundscape (owls, a thunderstorm, wolves...) has its own scene that
-reacts to the audio, and songs get one of the music visualizers. The full
+reacts to the audio, and songs get a full light show (visualizer.py). The full
 show changes about every minute; a song plays to its end. Colors are mostly
 dark purple and red, with orange for light and warmth and green only for
 the occasional wisp or vine, except where a scene needs its own.
@@ -17,6 +17,7 @@ import numpy as np
 
 import audio
 import lights
+import visualizer
 from halloween26 import PATTERNS, frames, show, tint, distance, x
 from lights import NUM_PIXELS, rotate
 
@@ -640,79 +641,15 @@ def scene_for(track):
 # Music
 
 
-def pumpkin_patch(track=None):
-    """Jack-o'-lanterns glow with the bass and flare on the hits, with green vines between them."""
-    size = 20
-    pumpkin_of = x // size
-    spot = x % size
-    face = np.where((spot >= 4) & (spot < 17), 1 - np.abs(spot - 10) / 10, 0)
-    vine = (spot < 2).astype(float)
-    count = NUM_PIXELS // size
-    flare = np.zeros(count)
-    flame = np.ones(count)
-
-    def draw(playback, t, dt):
-        for strength in playback.new_onsets():
-            if strength > 0.25:
-                flare[random.randrange(count)] = strength
-        flare[:] *= 0.5 ** (dt / 0.25)
-        flame[:] += (np.random.uniform(0.75, 1.0, count) - flame) * min(1.0, dt * 8)
-        level = (0.1 + 0.45 * playback.level("low") + 0.5 * flare) * flame
-        return tint(face * level[pumpkin_of], ORANGE) + tint(vine * (0.03 + 0.08 * playback.loudness()), GREEN)
-
-    play_scene(track or audio.pick("music"), draw)
+def graveyard_concert(track=None):
+    """A whole light show worked out from the song: acts change with the music, spooky when it's quiet and wild when it's loud."""
+    track = track or audio.pick("music")
+    if track is None:
+        return quiet_glow()
+    play_scene(track, visualizer.sequence(track))
 
 
-def spectrum_tombstones(track=None):
-    """Eight glowing columns rise and fall with the music, purple bass through red to orange treble."""
-    bars = 8
-    spacing = NUM_PIXELS / bars
-    centers = np.arange(bars) * spacing + spacing / 2
-    colors = [PURPLE * (1 - f) + RED * f if f < 1 else RED * (2 - f) + ORANGE * (f - 1)
-              for f in np.linspace(0, 2, bars)]
-    heights = np.zeros(bars)
-    caps = np.zeros(bars)
-
-    def draw(playback, t, dt):
-        bands = playback.bands()
-        heights[:] = np.maximum(bands, heights * 0.5 ** (dt / 0.15))
-        caps[:] = np.maximum(heights, caps - dt * 0.6)
-        rgb = tint(np.full(NUM_PIXELS, 0.015), PURPLE)
-        reach = spacing / 2 - 3
-        for b in range(bars):
-            d = distance(x, centers[b])
-            column = np.clip(heights[b] * reach - d + 1, 0, 1) * (0.25 + 0.55 * (1 - d / reach))
-            cap = np.exp(-((d - caps[b] * reach) / 0.8) ** 2) * 0.6 * (caps[b] > 0.05)
-            rgb += np.clip(column + cap, 0, 1)[:, None] * colors[b]
-        return rgb
-
-    play_scene(track or audio.pick("music"), draw)
-
-
-def dance_of_the_dead(track=None):
-    """Every beat sends a pulse racing both ways around the house: red, orange, purple, and now and then green."""
-    pulses = []  # [origin, start, color, strength]
-    count = [0]
-
-    def draw(playback, t, dt):
-        now = playback.t
-        for strength in playback.new_onsets():
-            if strength > 0.3 and (not pulses or now - pulses[-1][1] > 0.2):
-                count[0] += 1
-                color = GREEN if count[0] % 12 == 0 else (RED, ORANGE, PURPLE)[count[0] % 3]
-                pulses.append([random.uniform(0, NUM_PIXELS), now, color, strength])
-        rgb = tint(np.full(NUM_PIXELS, 0.02 + 0.08 * playback.loudness()), PURPLE)
-        for origin, start, color, strength in pulses:
-            age = now - start
-            wave = np.exp(-((distance(x, origin) - age * 110) / 5) ** 2)
-            rgb += tint(wave * (0.3 + 0.6 * strength) * math.exp(-age / 1.2), color)
-        pulses[:] = [p for p in pulses if now - p[1] < 2.5]
-        return rgb
-
-    play_scene(track or audio.pick("music"), draw)
-
-
-VISUALIZERS = [pumpkin_patch, spectrum_tombstones, dance_of_the_dead]
+VISUALIZERS = [graveyard_concert]
 
 FAVORITE_SONGS = ("thriller", "monster")  # file names starting with these come up more often
 FAVORITE_ODDS = 1 / 3
@@ -763,9 +700,8 @@ def play_song():
     song = song or audio.pick("music", avoid=recent_songs[-6:])
     if song is not None and fits(song.duration):
         recent_songs.append(song.name)
-        visual = random.choice(VISUALIZERS)
-        announce(visual)
-        visual(song)
+        announce(graveyard_concert)
+        graveyard_concert(song)
 
 
 def halloween_night():

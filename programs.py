@@ -1,7 +1,7 @@
 """The shows the control panel can play, and how to play a pick from one.
 
 A pick is a program id, optionally one animation in it, and for the sound
-show optionally one track (with `animation` as its visualizer for songs).
+show optionally one track.
 For "effects", a pick can instead carry an `effect` made to order (effects.py).
 """
 import audio
@@ -29,6 +29,8 @@ def build(program, animation=None, track=None, effect=None):
     p = PROGRAM[program]
     if effect:
         return [effects.animation(effect)], effects.SECONDS, False
+    if track and audio.find(track).kind == "music":  # songs always get the full light show
+        return [play_track(audio.find(track))], p["seconds"], p.get("shuffle", True)
     animations = p.get("play_all", p["animations"])
     if animation:
         animations = [a for a in p["animations"] if a.__name__ == animation][:1]
@@ -42,7 +44,7 @@ def build(program, animation=None, track=None, effect=None):
 def play_track(track, visual=None):
     """An animation that plays `track` once, with its soundscape or a song visualizer."""
     if visual is None:
-        visual = halloween_audio.scene_for(track) if track.kind == "ambience" else halloween_audio.dance_of_the_dead
+        visual = halloween_audio.scene_for(track) if track.kind == "ambience" else halloween_audio.graveyard_concert
 
     def animation():
         visual(track)
