@@ -82,7 +82,7 @@ Colors are `(R, G, B)`. To make a show appear in the control panel, add it to `P
 
 ## Sound
 
-`halloween_audio.py` is the Halloween show with sound, and what a new Pi plays by default. It plays soundscapes from `sounds/ambience/`, each with its own lights, changing about every minute (`SCENE_SECONDS`). After every three it plays a Halloween reds pattern with no sound, and after two of those a whole song from `sounds/music/`. Songs get a full light show from `visualizer.py`: it finds the beats, bars and sections ahead of time and gives each section its own act (fire, serpents, shockwaves...) and palette, darker when the music is quiet and wilder when it is loud. Picking one soundscape in the panel still plays its whole track.
+`halloween_audio.py` is the Halloween show with sound, and what a new Pi plays by default. It plays soundscapes from `sounds/ambience/`, each with its own lights, changing about every minute (`SCENE_SECONDS`). After every three it plays a Halloween reds pattern with no sound, and after two of those a whole song from `sounds/music/`. Songs get a full light show from `visualizer.py`: it finds the beats, bars and sections ahead of time and gives each section an act from the bank in `song_acts.py` (48 of them) and a palette, sometimes two acts sharing the house, darker when the music is quiet and wilder when it is loud. It favors acts that have not played lately, even in earlier songs. Picking one soundscape in the panel still plays its whole track.
 
 `audio.py` analyzes each track once and caches the results in `sounds/.cache/`: loudness, eight frequency bands, and onsets. Animations can then react to the music, and even see what's coming. The thunderstorm, for example, flashes lightning just before each thunderclap.
 
