@@ -7,9 +7,9 @@ from lights import NUM_PIXELS
 SECONDS = 600  # how long each call runs; rotate() calls it again
 FADE_IN = 8
 
-# LEDs at full white look cold, so a warm yellow white is red and green with hardly any blue.
-GOLDEN = np.array([1.0, 0.62, 0.08])
-SOFT = np.array([1.0, 0.72, 0.15])
+# LEDs at full white look cold, so warm white keeps red on top, with less green and much less blue.
+GOLDEN = np.array([1.0, 0.72, 0.22])
+SOFT = np.array([1.0, 0.80, 0.32])
 
 GLOW = (0.05, 0.085)  # every light's steady level, a little different per light
 PEAK = (0.16, 0.30)  # how high a twinkle swells
