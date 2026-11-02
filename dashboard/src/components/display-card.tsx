@@ -1,4 +1,4 @@
-import { Power, Square, Sun, Volume2, VolumeX } from "lucide-react";
+import { Power, Sun, Volume2, VolumeX } from "lucide-react";
 import { type RefObject, useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -108,9 +108,11 @@ export function DisplayCard(props: {
                   {props.soundHere ? <Volume2 /> : <VolumeX />}
                 </Button>
               )}
-              <Button size="icon-sm" variant="ghost" className="max-lg:size-9" aria-label="Stop the preview" disabled={!P.program} onClick={() => api("stop", { where: "preview" }).catch(report)}>
-                <Square />
-              </Button>
+              {P.program && (
+                <Button size="sm" variant="outline" className={TAP} onClick={() => api("stop", { where: "preview" }).catch(report)}>
+                  Stop
+                </Button>
+              )}
               <Button size="sm" className={TAP} disabled={!state.has_leds || !P.program || same} onClick={send}>
                 {same ? "On the lights" : "Send to lights"}
               </Button>
