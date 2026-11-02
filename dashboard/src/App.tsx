@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { DisplayCard, warnings } from "@/components/display-card";
 import type { HouseLayout } from "@/components/house";
+import { Loading } from "@/components/loading";
 import { LooksTab } from "@/components/looks-tab";
 import { SettingsTab } from "@/components/settings-tab";
 import { SoundsTab } from "@/components/sounds-tab";
@@ -102,7 +103,7 @@ export default function App() {
         </p>
       )}
       {!state || !library ? (
-        <p className="p-4 text-sm text-muted-foreground">Loading...</p>
+        <Loading layout={layout} />
       ) : (
         <main className="mx-auto grid w-full max-w-7xl min-h-0 flex-1 grid-cols-1 content-start gap-3 lg:content-stretch px-3 pb-3 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-4 lg:p-4">
           {/* On a phone the display stays put while the lists scroll under it (if there's room). */}

@@ -9,16 +9,20 @@ export interface HouseLayout {
   direction: string; // cw or ccw
 }
 
-const SIZES = {
+export const SIZES = {
   large: { width: 1000, pad: 28, dot: 3, glow: 9 },
   small: { width: 300, pad: 10, dot: 1.2, glow: 3.5 },
 };
+
+export function houseHeight({ across }: HouseLayout, width: number, pad: number) {
+  return Math.round(((N - 2 * across) / 2) * ((width - 2 * pad) / across) + 2 * pad);
+}
 
 /** Where each light is on a canvas this wide, walking the strip around the house. */
 function place({ across, corner, direction }: HouseLayout, width: number, pad: number) {
   const down = (N - 2 * across) / 2;
   const step = (width - 2 * pad) / across;
-  const height = Math.round(down * step + 2 * pad);
+  const height = houseHeight({ across, corner, direction }, width, pad);
   // Walk clockwise from the bottom-left corner, then rotate/flip to match the strip.
   const loop: [number, number][] = [];
   for (let i = 0; i < down; i++) loop.push([pad, height - pad - i * step]);
