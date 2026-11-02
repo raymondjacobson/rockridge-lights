@@ -497,7 +497,9 @@ def refused(e):
 
 @app.route("/")
 def index():
-    return send_file(str(ROOT / "web" / "index.html"))
+    response = send_file(str(ROOT / "web" / "index.html"))
+    response.headers["Cache-Control"] = "no-cache"  # it names the current scripts, so always check for a new one
+    return response
 
 
 @app.route("/assets/<path:name>")
