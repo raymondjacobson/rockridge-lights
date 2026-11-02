@@ -25,7 +25,7 @@ import time
 import traceback
 from pathlib import Path
 
-from flask import Flask, Response, abort, jsonify, request, send_file
+from flask import Flask, Response, abort, jsonify, request, send_file, send_from_directory
 from werkzeug.utils import secure_filename
 
 import audio
@@ -498,6 +498,14 @@ def refused(e):
 @app.route("/")
 def index():
     return send_file(str(ROOT / "web" / "index.html"))
+
+
+@app.route("/assets/<path:name>")
+def assets(name):
+    """The page's scripts, styles and font, built from dashboard/ with versioned names."""
+    response = send_from_directory(str(ROOT / "web" / "assets"), name)
+    response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    return response
 
 
 def live_events():

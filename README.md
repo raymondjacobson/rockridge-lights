@@ -17,7 +17,7 @@ The panel remembers what's on the lights in `panel_state.json`, so after a reboo
 
 ## On the internet
 
-The same panel is also at https://rockridge-lights.monophonic.workers.dev, behind a password, so it works from a phone anywhere. It's a Cloudflare Worker (`cloud/`, in Ray's own Cloudflare account, next to Frog's) that serves `web/index.html`; the panel on the Pi keeps a WebSocket open to it (`cloud.py`) and answers the page's calls over it. The Pi only ever connects out, so nothing at home is opened up.
+The same panel is also at https://rockridge-lights.monophonic.workers.dev, behind a password, so it works from a phone anywhere. It's a Cloudflare Worker (`cloud/`, in Ray's own Cloudflare account, next to Frog's) that serves `web/`; the panel on the Pi keeps a WebSocket open to it (`cloud.py`) and answers the page's calls over it. The Pi only ever connects out, so nothing at home is opened up.
 
 - The page streams the lights and the preview from the Pi only while someone has it open.
 - A sound is copied to the Worker the first time it's played there, so later plays don't wait on the Pi's upload.
@@ -94,8 +94,9 @@ On the lights, sound plays through PulseAudio on the paired Bluetooth speaker (a
 
 ## Layout
 
-- `halloween_audio.py`, `halloween26.py`, `xmas25.py`, `test_white.py`: current shows
-- `panel.py`, `show.py`, `programs.py`, `web/`: the control panel
+- `evening.py`, `halloween_audio.py`, `halloween26.py`, `xmas25.py`, `test_white.py`: current shows
+- `panel.py`, `show.py`, `programs.py`: the control panel
+- `dashboard/`: the panel's page (Vite + React + shadcn/ui, styled like Frog's dashboard). `cd dashboard && npm run build` writes it to `web/`, which is committed because the Pi has no Node to build with. `npm run dev` runs it against the real Pi (previewing is safe; sending changes the real lights).
 - `cloud.py`, `cloud/`: the panel on the internet (the Pi's side, and the Cloudflare Worker)
 - `effects.py`, `moments.py`: looks made to order and moments over a show, for Frog
 - `scripts/`: deploying the Worker and the Pi, pairing them, restarting the panel

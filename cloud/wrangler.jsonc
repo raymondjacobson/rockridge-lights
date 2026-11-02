@@ -9,7 +9,7 @@
     "bindings": [{ "name": "LightsLink", "class_name": "LightsLink" }]
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["LightsLink"] }],
-  // The page is web/index.html, the same file the Pi serves at home.
+  // The page is web/ (built from ../dashboard), the same files the Pi serves at home.
   "assets": { "directory": "../web" },
   // Secrets (set by Ray with `npx wrangler secret put`, never in this file):
   // LIGHTS_PASSWORD (the panel password), LIGHTS_DEVICE_TOKEN (scripts/pair-device.sh)

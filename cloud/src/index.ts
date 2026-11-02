@@ -2,7 +2,8 @@
  * rockridge-lights: the lights' control panel on the internet, at
  * https://rockridge-lights.monophonic.workers.dev.
  *
- * The page is web/index.html, the same file the Pi serves at home, deployed as a static asset.
+ * The page is web/ (built from dashboard/), the same files the Pi serves at home, deployed as
+ * static assets.
  * Everything else goes to the one LightsLink Durable Object (link.ts), which passes it to the
  * Pi over the WebSocket the Pi keeps open to /device. The panel's API and sounds need the
  * panel password (a 90-day cookie from /api/login); the Pi needs its device token.
