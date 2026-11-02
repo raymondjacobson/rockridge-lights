@@ -16,6 +16,8 @@ import time
 import traceback
 from pathlib import Path
 
+import flask.testing  # noqa: F401  test_client() imports this on first use, which fails if two calls race
+
 CONFIG = Path.home() / ".config" / "rockridge-lights" / "cloud.env"
 CHUNK = 256 * 1024  # body bytes per message
 PING_SECONDS = 25

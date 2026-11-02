@@ -69,6 +69,13 @@ export function usePanel() {
     };
   }, [session, loadLibrary, showOnline]);
 
+  // A first try can fail (the Pi just restarted, or was offline): keep trying until there's a list.
+  useEffect(() => {
+    if (library || needLogin) return;
+    const timer = setInterval(() => loadLibrary().catch(() => {}), 5000);
+    return () => clearInterval(timer);
+  }, [library, needLogin, loadLibrary]);
+
   // Sound in the browser: follows the preview's track
   const syncSound = useCallback(() => {
     const audio = player.current;
