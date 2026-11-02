@@ -6,12 +6,14 @@ For "effects", a pick can instead carry an `effect` made to order (effects.py).
 """
 import audio
 import effects
+import evening
 import halloween26
 import halloween_audio
 import test_white
 import xmas25
 
 PROGRAMS = [
+    {"id": "evening", "name": "Evening", "seconds": evening.SECONDS, "shuffle": False, "animations": evening.ANIMATIONS},
     {"id": "halloween_audio", "name": "Halloween with sound", "seconds": 1, "shuffle": False,
      "play_all": [halloween_audio.halloween_night],
      "animations": halloween_audio.SOUNDSCAPES + halloween_audio.VISUALIZERS},
